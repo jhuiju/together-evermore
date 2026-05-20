@@ -12,8 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppMapRouteImport } from './routes/_app/map'
 import { Route as AppConnectRouteImport } from './routes/_app/connect'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
+import { Route as AppRecordNewRouteImport } from './routes/_app/record.new'
+import { Route as AppDateDateIdRouteImport } from './routes/_app/date.$dateId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -29,6 +33,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMapRoute = AppMapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppConnectRoute = AppConnectRouteImport.update({
   id: '/connect',
   path: '/connect',
@@ -39,18 +53,36 @@ const AppCalendarRoute = AppCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRecordNewRoute = AppRecordNewRouteImport.update({
+  id: '/record/new',
+  path: '/record/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDateDateIdRoute = AppDateDateIdRouteImport.update({
+  id: '/date/$dateId',
+  path: '/date/$dateId',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/calendar': typeof AppCalendarRoute
   '/connect': typeof AppConnectRoute
+  '/map': typeof AppMapRoute
+  '/settings': typeof AppSettingsRoute
+  '/date/$dateId': typeof AppDateDateIdRoute
+  '/record/new': typeof AppRecordNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/calendar': typeof AppCalendarRoute
   '/connect': typeof AppConnectRoute
+  '/map': typeof AppMapRoute
+  '/settings': typeof AppSettingsRoute
+  '/date/$dateId': typeof AppDateDateIdRoute
+  '/record/new': typeof AppRecordNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,13 +91,43 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/calendar': typeof AppCalendarRoute
   '/_app/connect': typeof AppConnectRoute
+  '/_app/map': typeof AppMapRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/date/$dateId': typeof AppDateDateIdRoute
+  '/_app/record/new': typeof AppRecordNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/calendar' | '/connect'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/calendar'
+    | '/connect'
+    | '/map'
+    | '/settings'
+    | '/date/$dateId'
+    | '/record/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/calendar' | '/connect'
-  id: '__root__' | '/' | '/_app' | '/login' | '/_app/calendar' | '/_app/connect'
+  to:
+    | '/'
+    | '/login'
+    | '/calendar'
+    | '/connect'
+    | '/map'
+    | '/settings'
+    | '/date/$dateId'
+    | '/record/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/login'
+    | '/_app/calendar'
+    | '/_app/connect'
+    | '/_app/map'
+    | '/_app/settings'
+    | '/_app/date/$dateId'
+    | '/_app/record/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -97,6 +159,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/map': {
+      id: '/_app/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof AppMapRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/connect': {
       id: '/_app/connect'
       path: '/connect'
@@ -111,17 +187,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCalendarRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/record/new': {
+      id: '/_app/record/new'
+      path: '/record/new'
+      fullPath: '/record/new'
+      preLoaderRoute: typeof AppRecordNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/date/$dateId': {
+      id: '/_app/date/$dateId'
+      path: '/date/$dateId'
+      fullPath: '/date/$dateId'
+      preLoaderRoute: typeof AppDateDateIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppConnectRoute: typeof AppConnectRoute
+  AppMapRoute: typeof AppMapRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppDateDateIdRoute: typeof AppDateDateIdRoute
+  AppRecordNewRoute: typeof AppRecordNewRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
   AppConnectRoute: AppConnectRoute,
+  AppMapRoute: AppMapRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppDateDateIdRoute: AppDateDateIdRoute,
+  AppRecordNewRoute: AppRecordNewRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -134,3 +232,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -14,13 +14,185 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      couples: {
+        Row: {
+          anniversary: string | null
+          couple_name: string | null
+          created_at: string
+          id: string
+          invite_code: string
+          user1_id: string
+          user2_id: string | null
+        }
+        Insert: {
+          anniversary?: string | null
+          couple_name?: string | null
+          created_at?: string
+          id?: string
+          invite_code: string
+          user1_id: string
+          user2_id?: string | null
+        }
+        Update: {
+          anniversary?: string | null
+          couple_name?: string | null
+          created_at?: string
+          id?: string
+          invite_code?: string
+          user1_id?: string
+          user2_id?: string | null
+        }
+        Relationships: []
+      }
+      photos: {
+        Row: {
+          created_at: string
+          id: string
+          order: number
+          record_id: string
+          storage_url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order?: number
+          record_id: string
+          storage_url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order?: number
+          record_id?: string
+          storage_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ratings: {
+        Row: {
+          created_at: string
+          id: string
+          record_id: string
+          score: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          record_id: string
+          score: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          record_id?: string
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      records: {
+        Row: {
+          author_id: string
+          couple_id: string
+          created_at: string
+          date: string
+          id: string
+          lat: number | null
+          lng: number | null
+          location_name: string | null
+          memo: string | null
+          tag: string | null
+        }
+        Insert: {
+          author_id: string
+          couple_id: string
+          created_at?: string
+          date: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          location_name?: string | null
+          memo?: string | null
+          tag?: string | null
+        }
+        Update: {
+          author_id?: string
+          couple_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          location_name?: string | null
+          memo?: string | null
+          tag?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "records_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          avatar_url: string | null
+          couple_id: string | null
+          created_at: string
+          id: string
+          nickname: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          couple_id?: string | null
+          created_at?: string
+          id: string
+          nickname?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          couple_id?: string | null
+          created_at?: string
+          id?: string
+          nickname?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_couple_id: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

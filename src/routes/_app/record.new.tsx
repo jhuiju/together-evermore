@@ -47,6 +47,7 @@ function NewRecordPage() {
   const [place, setPlace] = useState<Place | null>(null);
   const [tag, setTag] = useState<Tag>("데이트");
   const [memo, setMemo] = useState("");
+  // score is in STARS (0-5, step 0.5); saved as score*2 (0-10)
   const [score, setScore] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -154,7 +155,7 @@ function NewRecordPage() {
         await supabase.from("ratings").insert({
           record_id: rec.id,
           user_id: user.id,
-          score,
+          score: score * 2,
         });
       }
 
@@ -317,7 +318,11 @@ function NewRecordPage() {
 
       {/* Rating */}
       <div className="space-y-2">
-        <Label className="text-sm">내 별점 <span className="text-pink-500 font-semibold ml-1">{score.toFixed(1)}</span> / 10</Label>
+        <Label className="text-sm">
+          내 별점{" "}
+          <span className="text-pink-500 font-semibold ml-1">{score.toFixed(1)}</span> / 5
+          <span className="text-xs text-muted-foreground ml-2">({(score * 2).toFixed(0)}점 / 10점)</span>
+        </Label>
         <StarRating value={score} onChange={setScore} />
       </div>
 
@@ -333,14 +338,13 @@ function NewRecordPage() {
 }
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  // 5 stars each worth 2 points; 0.5 step => each star has 4 quarters? No — 0.5 step means each star = 2 points,
-  // so a star has 4 increments of 0.5 each. We split each star visually into left/right halves (1 pt each).
-  // To support 0.5 step we use two clickable zones per half: that's 4 zones per star.
+  // value is in STARS (0-5), step 0.5 (half-star). Two click zones per star.
   return (
     <div className="flex gap-1">
       {[0, 1, 2, 3, 4].map((i) => {
-        const base = i * 2;
-        const filled = Math.min(Math.max(value - base, 0), 2);
+        const halfStar = i + 0.5;
+        const fullStar = i + 1;
+        const filled = value >= fullStar ? 2 : value >= halfStar ? 1 : 0;
         const pct = (filled / 2) * 100;
         return (
           <div key={i} className="relative w-10 h-10">
@@ -348,16 +352,18 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
             <div className="absolute inset-0 overflow-hidden" style={{ width: `${pct}%` }}>
               <Star className="w-10 h-10 text-pink-400 fill-pink-400" />
             </div>
-            {[0.5, 1, 1.5, 2].map((step) => (
-              <button
-                key={step}
-                type="button"
-                aria-label={`${base + step}점`}
-                onClick={() => onChange(base + step)}
-                className="absolute top-0 h-full"
-                style={{ left: `${((step - 0.5) / 2) * 100}%`, width: "25%" }}
-              />
-            ))}
+            <button
+              type="button"
+              aria-label={`${halfStar}점`}
+              onClick={() => onChange(halfStar)}
+              className="absolute top-0 left-0 w-1/2 h-full"
+            />
+            <button
+              type="button"
+              aria-label={`${fullStar}점`}
+              onClick={() => onChange(fullStar)}
+              className="absolute top-0 right-0 w-1/2 h-full"
+            />
           </div>
         );
       })}

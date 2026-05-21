@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Copy, Heart } from "lucide-react";
+import { Copy, Heart, Loader2 } from "lucide-react";
+import confetti from "canvas-confetti";
 
 export const Route = createFileRoute("/_app/connect")({
   component: ConnectPage,
@@ -20,6 +21,7 @@ function ConnectPage() {
   const [myCode, setMyCode] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [celebrating, setCelebrating] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -40,9 +42,16 @@ function ConnectPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const code = genCode();
-    const { error } = await supabase.from("couples").insert({ user1_id: user.id, invite_code: code });
+    const { error } = await supabase.from("couples").insert({
+      user1_id: user.id,
+      invite_code: code,
+      couple_name: "우리",
+    });
     if (error) toast.error(error.message);
-    else setMyCode(code);
+    else {
+      setMyCode(code);
+      try { await navigator.clipboard.writeText(code); toast.success("코드 복사됨"); } catch {}
+    }
     setLoading(false);
   }
 
@@ -91,11 +100,28 @@ function ConnectPage() {
     // link both users
     await supabase.from("users").update({ couple_id: couple.id }).in("id", [couple.user1_id, user.id]);
     toast.success("연결 완료! 💕");
-    navigate({ to: "/calendar" });
+    setCelebrating(true);
+    fireCelebration();
+    setTimeout(() => navigate({ to: "/calendar" }), 1800);
+  }
+
+  function fireCelebration() {
+    const colors = ["#f9a8d4", "#c4b5fd", "#fbcfe8", "#a78bfa"];
+    const end = Date.now() + 1200;
+    (function frame() {
+      confetti({ particleCount: 4, angle: 60, spread: 70, origin: { x: 0 }, colors, scalar: 0.9 });
+      confetti({ particleCount: 4, angle: 120, spread: 70, origin: { x: 1 }, colors, scalar: 0.9 });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
   }
 
   return (
     <div className="space-y-6">
+      {celebrating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur pointer-events-none">
+          <Heart className="w-24 h-24 text-primary fill-primary animate-ping" />
+        </div>
+      )}
       <div className="text-center py-4">
         <Heart className="w-10 h-10 text-primary fill-primary mx-auto mb-2" />
         <h2 className="text-xl font-semibold">연인과 연결하기</h2>
@@ -103,16 +129,26 @@ function ConnectPage() {
       </div>
 
       <Card className="p-6 space-y-3">
-        <h3 className="font-medium">내 초대 코드</h3>
+        <h3 className="font-medium">새 커플 시작</h3>
         {myCode ? (
-          <div className="flex items-center gap-2">
-            <div className="flex-1 text-3xl font-mono font-bold tracking-widest text-primary text-center py-3 bg-primary/5 rounded-lg">
-              {myCode}
+          <>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { navigator.clipboard.writeText(myCode); toast.success("복사됨"); }}
+                className="flex-1 text-3xl font-mono font-bold tracking-widest text-primary text-center py-3 bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg hover:from-primary/15 hover:to-accent/15 transition-colors"
+              >
+                {myCode}
+              </button>
+              <Button variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(myCode); toast.success("복사됨"); }}>
+                <Copy className="w-4 h-4" />
+              </Button>
             </div>
-            <Button variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(myCode); toast.success("복사됨"); }}>
-              <Copy className="w-4 h-4" />
-            </Button>
-          </div>
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground pt-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>상대방이 코드를 입력하길 기다리는 중...</span>
+            </div>
+          </>
         ) : (
           <Button onClick={createCode} disabled={loading} className="w-full">코드 생성하기</Button>
         )}

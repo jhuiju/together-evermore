@@ -214,8 +214,11 @@ function ConnectPage() {
       setLoading(false);
       return;
     }
-    // DB trigger handles linking both users' couple_id. Ensure my own row too.
-    await supabase.from("users").update({ couple_id: couple.id }).eq("id", user.id);
+    // Explicitly update BOTH users' couple_id — don't rely on triggers/realtime.
+    await supabase
+      .from("users")
+      .update({ couple_id: couple.id })
+      .in("id", [user.id, couple.user1_id]);
     celebrateAndRedirect();
   }
 

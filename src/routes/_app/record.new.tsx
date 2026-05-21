@@ -27,7 +27,12 @@ const TAGS = ["데이트", "여행", "일상", "특별한날"] as const;
 type Tag = (typeof TAGS)[number];
 
 type Place = { id: string; name: string; address: string; lat: number; lng: number };
-type Photo = { file: File; preview: string };
+type Photo = {
+  preview: string;
+  file?: File;        // present for newly added photos
+  existingId?: string; // present for photos already in DB
+  storageUrl?: string; // present for existing photos
+};
 
 function todayStr() {
   const d = new Date();
@@ -51,15 +56,66 @@ function NewRecordPage() {
   const [score, setScore] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [existingRecordId, setExistingRecordId] = useState<string | null>(null);
+  const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
+  const [loadingExisting, setLoadingExisting] = useState(true);
   const fileInput = useRef<HTMLInputElement>(null);
   const dragIdx = useRef<number | null>(null);
 
   const browserKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
 
   useEffect(() => {
-    return () => photos.forEach((p) => URL.revokeObjectURL(p.preview));
+    return () => photos.forEach((p) => { if (p.file) URL.revokeObjectURL(p.preview); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load existing record for this date (if any), so a second user editing the
+  // same date sees the already-saved photos/location/tag/memo and their own rating.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingExisting(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: me } = await supabase
+          .from("users").select("couple_id").eq("id", user.id).maybeSingle();
+        if (!me?.couple_id) return;
+        const { data: rec } = await supabase
+          .from("records")
+          .select("id, memo, tag, location_name, lat, lng")
+          .eq("couple_id", me.couple_id)
+          .eq("date", date)
+          .maybeSingle();
+        if (cancelled || !rec) return;
+        setExistingRecordId(rec.id);
+        setMemo(rec.memo ?? "");
+        if (rec.tag && (TAGS as readonly string[]).includes(rec.tag)) setTag(rec.tag as Tag);
+        if (rec.location_name && rec.lat != null && rec.lng != null) {
+          setPlace({ id: "existing", name: rec.location_name, address: "", lat: rec.lat, lng: rec.lng });
+          setQuery(rec.location_name);
+        }
+        const [{ data: ph }, { data: rt }] = await Promise.all([
+          supabase.from("photos").select("id, storage_url, order").eq("record_id", rec.id).order("order"),
+          supabase.from("ratings").select("score").eq("record_id", rec.id).eq("user_id", user.id).maybeSingle(),
+        ]);
+        if (cancelled) return;
+        setPhotos((ph ?? []).map((p) => ({
+          existingId: p.id,
+          storageUrl: p.storage_url,
+          preview: p.storage_url.startsWith("http")
+            ? p.storage_url
+            : supabase.storage.from("record-photos").getPublicUrl(p.storage_url).data.publicUrl,
+        })));
+        if (rt && typeof (rt as any).score === "number") {
+          setScore((rt as any).score / 2);
+        }
+      } finally {
+        if (!cancelled) setLoadingExisting(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [date]);
 
   function addFiles(files: FileList | File[]) {
     const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
@@ -76,7 +132,9 @@ function NewRecordPage() {
 
   function removePhoto(i: number) {
     setPhotos((prev) => {
-      URL.revokeObjectURL(prev[i].preview);
+      const target = prev[i];
+      if (target.file) URL.revokeObjectURL(target.preview);
+      if (target.existingId) setRemovedPhotoIds((ids) => [...ids, target.existingId!]);
       return prev.filter((_, idx) => idx !== i);
     });
   }
@@ -118,25 +176,40 @@ function NewRecordPage() {
       const { data: me } = await supabase.from("users").select("couple_id").eq("id", user.id).maybeSingle();
       if (!me?.couple_id) throw new Error("커플 연결 필요");
 
+      // Upsert the shared record on (couple_id, date). Keep original author_id
+      // when updating so we don't steal authorship from the first creator.
+      const payload: any = {
+        couple_id: me.couple_id,
+        date,
+        memo: memo || null,
+        tag,
+        location_name: place?.name ?? null,
+        lat: place?.lat ?? null,
+        lng: place?.lng ?? null,
+      };
+      if (!existingRecordId) payload.author_id = user.id;
+
       const { data: rec, error: recErr } = await supabase
         .from("records")
-        .insert({
-          couple_id: me.couple_id,
-          author_id: user.id,
-          date,
-          memo: memo || null,
-          tag,
-          location_name: place?.name ?? null,
-          lat: place?.lat ?? null,
-          lng: place?.lng ?? null,
-        })
+        .upsert(payload, { onConflict: "couple_id,date" })
         .select("id")
         .single();
-      if (recErr || !rec) throw recErr ?? new Error("기록 생성 실패");
+      if (recErr || !rec) throw recErr ?? new Error("기록 저장 실패");
 
-      // upload photos
+      // Delete removed existing photos
+      if (removedPhotoIds.length > 0) {
+        await supabase.from("photos").delete().in("id", removedPhotoIds);
+      }
+
+      // Upload only new photos; keep existing rows untouched.
+      // Re-number order so the final array reflects current UI order.
       for (let i = 0; i < photos.length; i++) {
         const p = photos[i];
+        if (p.existingId) {
+          await supabase.from("photos").update({ order: i }).eq("id", p.existingId);
+          continue;
+        }
+        if (!p.file) continue;
         const ext = p.file.name.split(".").pop()?.toLowerCase() || "jpg";
         const path = `${me.couple_id}/${rec.id}/${i}-${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
@@ -151,15 +224,19 @@ function NewRecordPage() {
         });
       }
 
+      // Personal rating: upsert on (record_id, user_id) so it never overwrites
+      // the partner's rating.
       if (score > 0) {
-        await supabase.from("ratings").insert({
-          record_id: rec.id,
-          user_id: user.id,
-          score: score * 2,
-        });
+        const { error: rateErr } = await supabase
+          .from("ratings")
+          .upsert(
+            { record_id: rec.id, user_id: user.id, score: score * 2 },
+            { onConflict: "record_id,user_id" },
+          );
+        if (rateErr) throw rateErr;
       }
 
-      toast.success("기록 저장 완료 💕");
+      toast.success(existingRecordId ? "기록이 업데이트 됐어요 ✓" : "기록 저장 완료 💕");
       navigate({ to: "/date/$dateId", params: { dateId: rec.id } });
     } catch (e: any) {
       toast.error(e.message ?? "저장 실패");
@@ -176,8 +253,13 @@ function NewRecordPage() {
   return (
     <div className="space-y-6 pb-8">
       <h2 className="text-xl font-semibold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
-        새로운 기록
+        {existingRecordId ? "기록 편집" : "새로운 기록"}
       </h2>
+      {existingRecordId && !loadingExisting && (
+        <p className="text-xs text-muted-foreground -mt-3">
+          이 날짜의 기록이 이미 있어요. 함께 채워나가 보세요 💕
+        </p>
+      )}
 
       {/* Date */}
       <div className="space-y-2">

@@ -47,7 +47,8 @@ function ConnectPage() {
   }
 
   async function joinByCode() {
-    if (input.length !== 6) {
+    const code = input.trim();
+    if (code.length !== 6) {
       toast.error("6자리 코드를 입력하세요");
       return;
     }
@@ -57,9 +58,16 @@ function ConnectPage() {
     const { data: couple, error: findErr } = await supabase
       .from("couples")
       .select("id, user1_id, user2_id")
-      .eq("invite_code", input)
+      .eq("invite_code", code)
       .maybeSingle();
-    if (findErr || !couple) {
+    if (findErr) {
+      console.error("[connect] invite lookup query error:", findErr);
+      toast.error("코드 조회 중 오류가 발생했어요");
+      setLoading(false);
+      return;
+    }
+    if (!couple) {
+      console.warn("[connect] invite lookup returned no rows for code:", code);
       toast.error("코드를 찾을 수 없어요");
       setLoading(false);
       return;

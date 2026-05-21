@@ -57,7 +57,7 @@ function LoginPage() {
           <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
             <Heart className="w-7 h-7 text-primary fill-primary" />
           </div>
-          <h1 className="text-2xl font-semibold text-foreground">우리의 기록</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Withlog</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {mode === "login" ? "다시 만나서 반가워요" : "둘만의 캘린더를 시작해요"}
           </p>

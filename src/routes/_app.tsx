@@ -49,7 +49,7 @@ function AppLayout() {
       <header className="border-b border-border/60 bg-card/70 backdrop-blur sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
           <Heart className="w-5 h-5 text-primary fill-primary" />
-          <h1 className="font-semibold text-foreground">우리의 기록</h1>
+          <h1 className="font-semibold text-foreground">Withlog</h1>
         </div>
       </header>
       <main className="max-w-2xl mx-auto px-4 py-6">

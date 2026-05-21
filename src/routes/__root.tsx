@@ -75,10 +75,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "우리의 기록 — Our Records" },
+      { title: "Withlog" },
       { name: "description", content: "둘이 함께 쌓는 추억 캘린더" },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "우리의 기록" },
+      { property: "og:title", content: "Withlog" },
       { property: "og:description", content: "둘이 함께 쌓는 추억 캘린더" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

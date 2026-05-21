@@ -14,30 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _rls_debug_results: {
-        Row: {
-          created_at: string
-          detail: string | null
-          id: string
-          ok: boolean
-          test_name: string
-        }
-        Insert: {
-          created_at?: string
-          detail?: string | null
-          id?: string
-          ok: boolean
-          test_name: string
-        }
-        Update: {
-          created_at?: string
-          detail?: string | null
-          id?: string
-          ok?: boolean
-          test_name?: string
-        }
-        Relationships: []
-      }
       couples: {
         Row: {
           anniversary: string | null

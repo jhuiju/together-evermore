@@ -173,21 +173,32 @@ function NewRecordPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("로그인 필요");
+      console.log("[record save] auth.uid() =", user.id);
       const { data: me } = await supabase.from("users").select("couple_id").eq("id", user.id).maybeSingle();
       if (!me?.couple_id) throw new Error("커플 연결 필요");
 
-      // Upsert the shared record on (couple_id, date). Keep original author_id
-      // when updating so we don't steal authorship from the first creator.
+      // Determine the author_id to send. On INSERT, use current user.
+      // On UPDATE, fetch existing author_id from DB so we don't overwrite it
+      // and so the INSERT side of upsert doesn't violate NOT NULL.
+      let authorId: string = user.id;
+      const { data: existing } = await supabase
+        .from("records")
+        .select("id, author_id")
+        .eq("couple_id", me.couple_id)
+        .eq("date", date)
+        .maybeSingle();
+      if (existing?.author_id) authorId = existing.author_id;
+
       const payload: any = {
         couple_id: me.couple_id,
         date,
+        author_id: authorId,
         memo: memo || null,
         tag,
         location_name: place?.name ?? null,
         lat: place?.lat ?? null,
         lng: place?.lng ?? null,
       };
-      if (!existingRecordId) payload.author_id = user.id;
 
       const { data: rec, error: recErr } = await supabase
         .from("records")

@@ -6,7 +6,18 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Loader2, MapPin, Pencil, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, MapPin, Pencil, Star, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/date/$dateId")({
   component: DateDetailPage,
@@ -112,12 +123,22 @@ function DateDetailPage() {
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [pendingScore, setPendingScore] = useState(0);
+  const [deleting, setDeleting] = useState(false);
+  const [myCoupleId, setMyCoupleId] = useState<string | null>(null);
   const touchStart = useRef<number | null>(null);
 
   async function load() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     setMe(user?.id ?? null);
+    if (user) {
+      const { data: meRow } = await supabase
+        .from("users")
+        .select("couple_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      setMyCoupleId(meRow?.couple_id ?? null);
+    }
 
     const { data: rec, error } = await supabase
       .from("records")
@@ -184,6 +205,36 @@ function DateDetailPage() {
     toast.success("별점이 저장되었어요 ⭐");
     setPendingScore(0);
     load();
+  }
+
+  async function deleteRecord() {
+    if (!record) return;
+    setDeleting(true);
+    try {
+      const { error: rErr } = await supabase.from("ratings").delete().eq("record_id", record.id);
+      if (rErr) throw rErr;
+
+      const paths = photos
+        .map((p) => (p.storage_url.startsWith("http") ? null : p.storage_url))
+        .filter((p): p is string => !!p);
+      if (paths.length > 0) {
+        const { error: sErr } = await supabase.storage.from("record-photos").remove(paths);
+        if (sErr) throw sErr;
+      }
+      const { error: pErr } = await supabase.from("photos").delete().eq("record_id", record.id);
+      if (pErr) throw pErr;
+
+      const { error: recErr } = await supabase.from("records").delete().eq("id", record.id);
+      if (recErr) throw recErr;
+
+      toast.success("기록이 삭제됐어요");
+      navigate({ to: "/calendar" });
+    } catch (e) {
+      console.error(e);
+      toast.error("삭제 중 오류가 발생했어요. 다시 시도해주세요");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   if (loading) {
@@ -336,6 +387,43 @@ function DateDetailPage() {
           <div className="text-xs text-muted-foreground">{record.date}</div>
         </div>
       </Card>
+
+      {/* Delete (any couple member) */}
+      {myCoupleId && record.couple_id === myCoupleId && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-full border-destructive/40 text-destructive hover:bg-destructive/5 hover:text-destructive"
+              disabled={deleting}
+            >
+              {deleting ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-1" />
+              )}
+              기록 삭제
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>기록을 삭제할까요?</AlertDialogTitle>
+              <AlertDialogDescription>
+                기록을 삭제하면 사진, 장소, 메모, 별점이 모두 삭제돼요. 정말 삭제할까요?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={deleteRecord}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                삭제할게요
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
 
       {/* Floating rate bar */}
       {!myRating && (

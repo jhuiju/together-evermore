@@ -172,7 +172,10 @@ function DateDetailPage() {
     const scoreToSave = pendingScore * 2;
     const { error } = await supabase
       .from("ratings")
-      .insert({ record_id: record.id, user_id: me, score: scoreToSave });
+      .upsert(
+        { record_id: record.id, user_id: me, score: scoreToSave },
+        { onConflict: "record_id,user_id" },
+      );
     setSubmittingRating(false);
     if (error) {
       toast.error(error.message);

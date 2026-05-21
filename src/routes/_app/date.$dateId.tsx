@@ -30,8 +30,10 @@ type UserRow = { id: string; nickname: string | null; avatar_url: string | null 
 const BROWSER_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
 
 function Stars({ score, size = 16 }: { score: number; size?: number }) {
-  const full = Math.floor(score / 2);
-  const half = score - full * 2 >= 1 ? 1 : 0;
+  // score is stored 0-10; convert to 0-5 stars with half-step
+  const stars = score / 2;
+  const full = Math.floor(stars);
+  const half = stars - full >= 0.5 ? 1 : 0;
   const empty = 5 - full - half;
   return (
     <div className="flex items-center gap-0.5">
@@ -53,15 +55,16 @@ function Stars({ score, size = 16 }: { score: number; size?: number }) {
   );
 }
 
+// value/onChange are in STARS (0-5, step 0.5)
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hover, setHover] = useState<number | null>(null);
   const display = hover ?? value;
   return (
     <div className="flex items-center gap-1">
       {Array.from({ length: 5 }).map((_, i) => {
-        const leftVal = i * 2 + 1;
-        const rightVal = i * 2 + 2;
-        const filled = display >= rightVal ? 2 : display >= leftVal ? 1 : 0;
+        const halfStar = i + 0.5;
+        const fullStar = i + 1;
+        const filled = display >= fullStar ? 2 : display >= halfStar ? 1 : 0;
         return (
           <div key={i} className="relative cursor-pointer" style={{ width: 28, height: 28 }}>
             <Star className={`absolute inset-0 w-7 h-7 ${filled === 0 ? "text-muted-foreground/40" : "text-primary"}`} />
@@ -73,23 +76,25 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
             <button
               type="button"
               className="absolute inset-y-0 left-0 w-1/2"
-              onMouseEnter={() => setHover(leftVal)}
+              onMouseEnter={() => setHover(halfStar)}
               onMouseLeave={() => setHover(null)}
-              onClick={() => onChange(leftVal)}
-              aria-label={`${leftVal / 2}점`}
+              onClick={() => onChange(halfStar)}
+              aria-label={`${halfStar}점 (${halfStar * 2}점/10)`}
             />
             <button
               type="button"
               className="absolute inset-y-0 right-0 w-1/2"
-              onMouseEnter={() => setHover(rightVal)}
+              onMouseEnter={() => setHover(fullStar)}
               onMouseLeave={() => setHover(null)}
-              onClick={() => onChange(rightVal)}
-              aria-label={`${rightVal / 2}점`}
+              onClick={() => onChange(fullStar)}
+              aria-label={`${fullStar}점 (${fullStar * 2}점/10)`}
             />
           </div>
         );
       })}
-      <span className="ml-2 text-sm font-medium text-primary">{(display / 2).toFixed(1)}</span>
+      <span className="ml-2 text-sm font-medium text-primary">
+        {display.toFixed(1)} / 5 <span className="text-muted-foreground font-normal">({(display * 2).toFixed(0)}점/10)</span>
+      </span>
     </div>
   );
 }
@@ -163,9 +168,11 @@ function DateDetailPage() {
   async function submitRating() {
     if (!me || !record || pendingScore <= 0) return;
     setSubmittingRating(true);
+    // pendingScore is in STARS (0-5); save as 10-point score
+    const scoreToSave = pendingScore * 2;
     const { error } = await supabase
       .from("ratings")
-      .insert({ record_id: record.id, user_id: me, score: pendingScore });
+      .insert({ record_id: record.id, user_id: me, score: scoreToSave });
     setSubmittingRating(false);
     if (error) {
       toast.error(error.message);
@@ -283,7 +290,7 @@ function DateDetailPage() {
           <p className="text-xs text-muted-foreground">평균 별점</p>
           <p className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             {(average / 2).toFixed(2)}
-            <span className="text-sm text-muted-foreground font-normal"> / 5</span>
+            <span className="text-sm text-muted-foreground font-normal"> / 5 ({average.toFixed(1)}점/10)</span>
           </p>
         </div>
       )}
@@ -376,7 +383,10 @@ function RatingCard({
       {score !== null ? (
         <>
           <Stars score={score} />
-          <p className="mt-1 text-lg font-bold">{(score / 2).toFixed(1)}<span className="text-xs text-muted-foreground font-normal"> / 5</span></p>
+          <p className="mt-1 text-lg font-bold">
+            {(score / 2).toFixed(1)}
+            <span className="text-xs text-muted-foreground font-normal"> / 5 ({score.toFixed(1)}점/10)</span>
+          </p>
         </>
       ) : (
         <p className="text-sm text-muted-foreground py-2">아직 미입력</p>

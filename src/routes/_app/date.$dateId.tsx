@@ -361,8 +361,8 @@ function DateDetailPage() {
         )}
       </div>
 
-      {/* Edit (author only) */}
-      {me === record.author_id && (
+      {/* Edit (both partners) */}
+      {myCoupleId && record.couple_id === myCoupleId && (
         <Button
           asChild
           variant="outline"

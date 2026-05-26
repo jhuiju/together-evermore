@@ -159,6 +159,8 @@ function DateDetailPage() {
       supabase.from("users").select("id, nickname, avatar_url").eq("couple_id", rec.couple_id),
     ]);
     setPhotos(ph ?? []);
+    const urls = await getSignedPhotoUrls((ph ?? []).map((p) => p.storage_url));
+    setPhotoUrls(urls);
     setRatings(rt ?? []);
     setUsers(us ?? []);
     setLoading(false);

@@ -120,6 +120,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+  const swRegistered = useRef(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
@@ -128,6 +129,29 @@ function RootComponent() {
     });
     return () => subscription.unsubscribe();
   }, [router, queryClient]);
+
+  useEffect(() => {
+    if (swRegistered.current) return;
+    swRegistered.current = true;
+
+    const isInIframe = (() => {
+      try {
+        return window.self !== window.top;
+      } catch {
+        return true;
+      }
+    })();
+
+    const isPreviewHost =
+      window.location.hostname.includes("id-preview--") ||
+      window.location.hostname.includes("lovableproject.com");
+
+    if (!isPreviewHost && !isInIframe && "serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .catch((err) => console.error("SW registration failed:", err));
+    }
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

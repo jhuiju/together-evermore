@@ -159,7 +159,7 @@ function MapPage() {
       });
       marker.addListener("click", () => {
         const thumb = p.thumb
-          ? `<img src="${photoUrl(p.thumb)}" style="width:100%;height:88px;object-fit:cover;border-radius:8px;margin-bottom:8px"/>`
+          ? `<img src="${p.thumb}" style="width:100%;height:88px;object-fit:cover;border-radius:8px;margin-bottom:8px"/>`
           : "";
         const avg = p.avg != null ? `⭐ ${p.avg.toFixed(1)}` : "평점 없음";
         const name = p.location_name ?? "장소";

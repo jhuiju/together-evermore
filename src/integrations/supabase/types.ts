@@ -193,6 +193,10 @@ export type Database = {
     }
     Functions: {
       current_couple_id: { Args: never; Returns: string }
+      join_couple_by_invite: {
+        Args: { p_invite_code: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

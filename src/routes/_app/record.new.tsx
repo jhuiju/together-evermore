@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { searchPlaces } from "@/lib/places.functions";
 import { getSignedPhotoUrls } from "@/lib/photos";
+import { clearDataCache } from "@/lib/sw-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -249,6 +250,7 @@ function NewRecordPage() {
       }
 
       toast.success(existingRecordId ? "기록이 업데이트 됐어요 ✓" : "기록 저장 완료 💕");
+      clearDataCache();
       navigate({ to: "/date/$dateId", params: { dateId: rec.id } });
     } catch (e: any) {
       toast.error(e.message ?? "저장 실패");

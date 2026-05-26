@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPhotoPath, getSignedPhotoUrls } from "@/lib/photos";
+import { clearDataCache } from "@/lib/sw-cache";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -230,6 +231,7 @@ function DateDetailPage() {
       const { error: recErr } = await supabase.from("records").delete().eq("id", record.id);
       if (recErr) throw recErr;
 
+      clearDataCache();
       toast.success("기록이 삭제됐어요");
       navigate({ to: "/calendar" });
     } catch (e) {

@@ -100,12 +100,13 @@ function NewRecordPage() {
           supabase.from("ratings").select("score").eq("record_id", rec.id).eq("user_id", user.id).maybeSingle(),
         ]);
         if (cancelled) return;
-        setPhotos((ph ?? []).map((p) => ({
+        const rows = ph ?? [];
+        const urlMap = await getSignedPhotoUrls(rows.map((p) => p.storage_url));
+        if (cancelled) return;
+        setPhotos(rows.map((p) => ({
           existingId: p.id,
           storageUrl: p.storage_url,
-          preview: p.storage_url.startsWith("http")
-            ? p.storage_url
-            : supabase.storage.from("record-photos").getPublicUrl(p.storage_url).data.publicUrl,
+          preview: urlMap[p.storage_url] ?? "",
         })));
         if (rt && typeof (rt as any).score === "number") {
           setScore((rt as any).score / 2);

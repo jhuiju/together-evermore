@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getPhotoPath, getSignedPhotoUrls } from "@/lib/photos";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -118,6 +119,7 @@ function DateDetailPage() {
   const [me, setMe] = useState<string | null>(null);
   const [record, setRecord] = useState<RecordRow | null>(null);
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [ratings, setRatings] = useState<RatingRow[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [carouselIdx, setCarouselIdx] = useState(0);
@@ -158,6 +160,8 @@ function DateDetailPage() {
       supabase.from("users").select("id, nickname, avatar_url").eq("couple_id", rec.couple_id),
     ]);
     setPhotos(ph ?? []);
+    const urls = await getSignedPhotoUrls((ph ?? []).map((p) => p.storage_url));
+    setPhotoUrls(urls);
     setRatings(rt ?? []);
     setUsers(us ?? []);
     setLoading(false);
@@ -182,8 +186,7 @@ function DateDetailPage() {
   }, [myRating, partnerRating]);
 
   function photoUrl(p: PhotoRow) {
-    if (p.storage_url.startsWith("http")) return p.storage_url;
-    return supabase.storage.from("record-photos").getPublicUrl(p.storage_url).data.publicUrl;
+    return photoUrls[p.storage_url] ?? "";
   }
 
   async function submitRating() {
@@ -215,8 +218,8 @@ function DateDetailPage() {
       if (rErr) throw rErr;
 
       const paths = photos
-        .map((p) => (p.storage_url.startsWith("http") ? null : p.storage_url))
-        .filter((p): p is string => !!p);
+        .map((p) => getPhotoPath(p.storage_url))
+        .filter(Boolean);
       if (paths.length > 0) {
         const { error: sErr } = await supabase.storage.from("record-photos").remove(paths);
         if (sErr) throw sErr;

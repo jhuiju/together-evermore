@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getSignedPhotoUrls } from "@/lib/photos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, MapPin } from "lucide-react";
@@ -42,11 +43,6 @@ function loadMaps(): Promise<void> {
   return mapsLoading;
 }
 
-function photoUrl(path: string) {
-  const { data } = supabase.storage.from("record-photos").getPublicUrl(path);
-  return data.publicUrl;
-}
-
 function MapPage() {
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -80,6 +76,7 @@ function MapPage() {
       (photos ?? []).forEach((p: any) => {
         if (!firstPhoto.has(p.record_id)) firstPhoto.set(p.record_id, p.storage_url);
       });
+      const urlMap = await getSignedPhotoUrls(Array.from(firstPhoto.values()));
       const scores = new Map<string, number[]>();
       (ratings ?? []).forEach((r: any) => {
         const a = scores.get(r.record_id) ?? [];
@@ -96,7 +93,10 @@ function MapPage() {
             lng: r.lng,
             location_name: r.location_name,
             tag: r.tag,
-            thumb: firstPhoto.get(r.id) ?? null,
+            thumb: (() => {
+              const u = firstPhoto.get(r.id);
+              return u ? urlMap[u] ?? null : null;
+            })(),
             avg: s.length ? s.reduce((a, b) => a + b, 0) / s.length : null,
           };
         }),
@@ -159,7 +159,7 @@ function MapPage() {
       });
       marker.addListener("click", () => {
         const thumb = p.thumb
-          ? `<img src="${photoUrl(p.thumb)}" style="width:100%;height:88px;object-fit:cover;border-radius:8px;margin-bottom:8px"/>`
+          ? `<img src="${p.thumb}" style="width:100%;height:88px;object-fit:cover;border-radius:8px;margin-bottom:8px"/>`
           : "";
         const avg = p.avg != null ? `⭐ ${p.avg.toFixed(1)}` : "평점 없음";
         const name = p.location_name ?? "장소";

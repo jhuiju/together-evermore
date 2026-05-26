@@ -229,10 +229,9 @@ function NewRecordPage() {
           .from("record-photos")
           .upload(path, p.file, { contentType: p.file.type, upsert: false });
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("record-photos").getPublicUrl(path);
         await supabase.from("photos").insert({
           record_id: rec.id,
-          storage_url: pub.publicUrl,
+          storage_url: path,
           order: i,
         });
       }

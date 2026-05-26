@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getSignedPhotoUrls } from "@/lib/photos";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Plus, Heart } from "lucide-react";
 
@@ -70,7 +71,9 @@ function CalendarPage() {
           partnerScore: partner,
         };
       });
-      setRecords(mapped);
+      const thumbs = mapped.map((m) => m.thumb).filter((t): t is string => !!t);
+      const urlMap = await getSignedPhotoUrls(thumbs);
+      setRecords(mapped.map((m) => ({ ...m, thumb: m.thumb ? urlMap[m.thumb] : undefined })));
     })();
   }, [year, month, myId]);
 

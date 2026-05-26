@@ -179,46 +179,19 @@ function ConnectPage() {
       setLoading(false);
       return;
     }
-    const { data: couple, error: findErr } = await supabase
-      .from("couples")
-      .select("id, user1_id, user2_id")
-      .eq("invite_code", code)
-      .maybeSingle();
-    if (findErr) {
-      console.error("[connect] invite lookup query error:", findErr);
-      toast.error("코드 조회 중 오류가 발생했어요");
+    const { error: rpcErr } = await supabase.rpc("join_couple_by_invite", {
+      p_invite_code: code,
+    });
+    if (rpcErr) {
+      const msg = rpcErr.message || "";
+      if (msg.includes("Code not found")) toast.error("코드를 찾을 수 없어요");
+      else if (msg.includes("Code already used")) toast.error("이미 연결된 코드예요");
+      else if (msg.includes("Cannot use your own")) toast.error("본인 코드는 사용할 수 없어요");
+      else if (msg.includes("Already linked")) toast.error("이미 연결된 계정이에요");
+      else toast.error("연결 중 오류가 발생했어요");
       setLoading(false);
       return;
     }
-    if (!couple) {
-      toast.error("코드를 찾을 수 없어요");
-      setLoading(false);
-      return;
-    }
-    if (couple.user2_id) {
-      toast.error("이미 연결된 코드예요");
-      setLoading(false);
-      return;
-    }
-    if (couple.user1_id === user.id) {
-      toast.error("본인 코드는 사용할 수 없어요");
-      setLoading(false);
-      return;
-    }
-    const { error: upErr } = await supabase
-      .from("couples")
-      .update({ user2_id: user.id })
-      .eq("id", couple.id);
-    if (upErr) {
-      toast.error(upErr.message);
-      setLoading(false);
-      return;
-    }
-    // Explicitly update BOTH users' couple_id — don't rely on triggers/realtime.
-    await supabase
-      .from("users")
-      .update({ couple_id: couple.id })
-      .in("id", [user.id, couple.user1_id]);
     celebrateAndRedirect();
   }
 

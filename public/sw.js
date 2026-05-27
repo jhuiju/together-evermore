@@ -98,6 +98,10 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('message', (event) => {
   const data = event.data;
+  if (data === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
   if (!data || typeof data !== 'object') return;
 
   if (data.type === 'CLEAR_DATA_CACHE') {

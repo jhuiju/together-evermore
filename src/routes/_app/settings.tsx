@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Camera, Heart, Loader2, LogOut, User as UserIcon } from "lucide-react";
+import { Camera, Eye, EyeOff, Heart, Loader2, LogOut, Shield, User as UserIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -39,11 +39,23 @@ function SettingsPage() {
   const [savingAnniv, setSavingAnniv] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
+      setUserEmail(user.email ?? null);
       const { data: me } = await supabase
         .from("users")
         .select("nickname, avatar_url, couple_id")
@@ -138,6 +150,56 @@ function SettingsPage() {
     } finally {
       setUploadingAvatar(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function validatePasswords(): string | null {
+    if (!currentPassword.trim()) return "현재 비밀번호를 입력해주세요";
+    if (newPassword.length < 8) return "비밀번호는 8자 이상이어야 해요";
+    if (newPassword !== confirmPassword) return "새 비밀번호가 일치하지 않아요";
+    return null;
+  }
+
+  async function changePassword() {
+    const err = validatePasswords();
+    if (err) {
+      setPasswordError(err);
+      return;
+    }
+    if (!userEmail) {
+      setPasswordError("사용자 정보를 불러오지 못했어요");
+      return;
+    }
+    setPasswordError("");
+    setChangingPassword(true);
+    try {
+      // Verify current password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPassword,
+      });
+      if (signInError) {
+        setPasswordError("현재 비밀번호가 올바르지 않아요");
+        setChangingPassword(false);
+        return;
+      }
+      // Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (updateError) {
+        setPasswordError("비밀번호 변경 중 오류가 발생했어요");
+        setChangingPassword(false);
+        return;
+      }
+      toast.success("비밀번호가 변경됐어요 ✓");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      setPasswordError("비밀번호 변경 중 오류가 발생했어요");
+    } finally {
+      setChangingPassword(false);
     }
   }
 
@@ -271,6 +333,91 @@ function SettingsPage() {
             </p>
           </div>
         )}
+      </Card>
+
+      {/* Password change */}
+      <Card className="p-6 space-y-4">
+        <h3 className="font-medium flex items-center gap-2">
+          <Shield className="w-4 h-4 text-primary" /> 계정 보안
+        </h3>
+
+        <div className="space-y-2">
+          <Label htmlFor="current-password" className="text-sm">현재 비밀번호</Label>
+          <div className="relative">
+            <Input
+              id="current-password"
+              type={showCurrent ? "text" : "password"}
+              value={currentPassword}
+              onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(""); }}
+              placeholder="현재 비밀번호"
+              maxLength={128}
+            />
+            <button
+              type="button"
+              onClick={() => setShowCurrent((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+              tabIndex={-1}
+            >
+              {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="new-password" className="text-sm">새 비밀번호</Label>
+          <div className="relative">
+            <Input
+              id="new-password"
+              type={showNew ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); }}
+              placeholder="새 비밀번호"
+              maxLength={128}
+            />
+            <button
+              type="button"
+              onClick={() => setShowNew((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+              tabIndex={-1}
+            >
+              {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirm-password" className="text-sm">새 비밀번호 확인</Label>
+          <div className="relative">
+            <Input
+              id="confirm-password"
+              type={showConfirm ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(""); }}
+              placeholder="새 비밀번호 확인"
+              maxLength={128}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+              tabIndex={-1}
+            >
+              {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {passwordError && (
+          <p className="text-sm text-destructive font-medium">{passwordError}</p>
+        )}
+
+        <Button
+          onClick={changePassword}
+          disabled={changingPassword}
+          className="w-full bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white"
+        >
+          {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : "비밀번호 변경"}
+        </Button>
       </Card>
 
       <Button variant="outline" onClick={logout} className="w-full">

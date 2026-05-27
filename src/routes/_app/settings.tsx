@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Camera, Heart, Loader2, LogOut, User as UserIcon } from "lucide-react";
+import { Camera, Eye, EyeOff, Heart, Loader2, LogOut, Shield, User as UserIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,

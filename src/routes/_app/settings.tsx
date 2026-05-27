@@ -55,6 +55,7 @@ function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
+      setUserEmail(user.email ?? null);
       const { data: me } = await supabase
         .from("users")
         .select("nickname, avatar_url, couple_id")

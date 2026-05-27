@@ -153,6 +153,56 @@ function SettingsPage() {
     }
   }
 
+  function validatePasswords(): string | null {
+    if (!currentPassword.trim()) return "현재 비밀번호를 입력해주세요";
+    if (newPassword.length < 8) return "비밀번호는 8자 이상이어야 해요";
+    if (newPassword !== confirmPassword) return "새 비밀번호가 일치하지 않아요";
+    return null;
+  }
+
+  async function changePassword() {
+    const err = validatePasswords();
+    if (err) {
+      setPasswordError(err);
+      return;
+    }
+    if (!userEmail) {
+      setPasswordError("사용자 정보를 불러오지 못했어요");
+      return;
+    }
+    setPasswordError("");
+    setChangingPassword(true);
+    try {
+      // Verify current password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPassword,
+      });
+      if (signInError) {
+        setPasswordError("현재 비밀번호가 올바르지 않아요");
+        setChangingPassword(false);
+        return;
+      }
+      // Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (updateError) {
+        setPasswordError("비밀번호 변경 중 오류가 발생했어요");
+        setChangingPassword(false);
+        return;
+      }
+      toast.success("비밀번호가 변경됐어요 ✓");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      setPasswordError("비밀번호 변경 중 오류가 발생했어요");
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
   async function logout() {
     await supabase.auth.signOut();
     toast.success("로그아웃 되었습니다");

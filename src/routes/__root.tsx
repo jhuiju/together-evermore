@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "sonner";
+import { UpdatePrompt } from "@/components/update-prompt";
 
 import appCss from "../styles.css?url";
 
@@ -159,6 +160,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <UpdatePrompt />
       <Outlet />
       <Toaster position="top-center" richColors />
     </QueryClientProvider>

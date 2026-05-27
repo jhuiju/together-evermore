@@ -39,6 +39,17 @@ function SettingsPage() {
   const [savingAnniv, setSavingAnniv] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();

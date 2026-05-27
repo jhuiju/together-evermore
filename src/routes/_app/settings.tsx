@@ -335,6 +335,91 @@ function SettingsPage() {
         )}
       </Card>
 
+      {/* Password change */}
+      <Card className="p-6 space-y-4">
+        <h3 className="font-medium flex items-center gap-2">
+          <Shield className="w-4 h-4 text-primary" /> 계정 보안
+        </h3>
+
+        <div className="space-y-2">
+          <Label htmlFor="current-password" className="text-sm">현재 비밀번호</Label>
+          <div className="relative">
+            <Input
+              id="current-password"
+              type={showCurrent ? "text" : "password"}
+              value={currentPassword}
+              onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(""); }}
+              placeholder="현재 비밀번호"
+              maxLength={128}
+            />
+            <button
+              type="button"
+              onClick={() => setShowCurrent((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+              tabIndex={-1}
+            >
+              {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="new-password" className="text-sm">새 비밀번호</Label>
+          <div className="relative">
+            <Input
+              id="new-password"
+              type={showNew ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); }}
+              placeholder="새 비밀번호"
+              maxLength={128}
+            />
+            <button
+              type="button"
+              onClick={() => setShowNew((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+              tabIndex={-1}
+            >
+              {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirm-password" className="text-sm">새 비밀번호 확인</Label>
+          <div className="relative">
+            <Input
+              id="confirm-password"
+              type={showConfirm ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(""); }}
+              placeholder="새 비밀번호 확인"
+              maxLength={128}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+              tabIndex={-1}
+            >
+              {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {passwordError && (
+          <p className="text-sm text-destructive font-medium">{passwordError}</p>
+        )}
+
+        <Button
+          onClick={changePassword}
+          disabled={changingPassword}
+          className="w-full bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white"
+        >
+          {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : "비밀번호 변경"}
+        </Button>
+      </Card>
+
       <Button variant="outline" onClick={logout} className="w-full">
         <LogOut className="w-4 h-4 mr-2" /> 로그아웃
       </Button>

@@ -155,7 +155,7 @@ function CalendarPage() {
               to={rec ? "/date/$dateId" : "/record/new"}
               params={rec ? { dateId: rec.id } : (undefined as never)}
               search={!rec ? { date: dateStr } : (undefined as never)}
-              className={`relative aspect-square flex flex-col p-1 ${
+              className={`relative aspect-[3/4] flex flex-col p-1 ${
                 rec
                   ? "bg-white rounded-lg border border-[#e8ddd0]/80 overflow-hidden"
                   : ""

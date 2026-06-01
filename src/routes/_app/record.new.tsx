@@ -180,22 +180,8 @@ function NewRecordPage() {
       const { data: me } = await supabase.from("users").select("couple_id").eq("id", user.id).maybeSingle();
       if (!me?.couple_id) throw new Error("커플 연결 필요");
 
-      // Determine the author_id to send. On INSERT, use current user.
-      // On UPDATE, fetch existing author_id from DB so we don't overwrite it
-      // and so the INSERT side of upsert doesn't violate NOT NULL.
-      let authorId: string = user.id;
-      const { data: existing } = await supabase
-        .from("records")
-        .select("id, author_id")
-        .eq("couple_id", me.couple_id)
-        .eq("date", date)
-        .maybeSingle();
-      if (existing?.author_id) authorId = existing.author_id;
-
-      const payload: any = {
-        couple_id: me.couple_id,
+      const updatableFields = {
         date,
-        author_id: authorId,
         memo: memo || null,
         tag,
         location_name: place?.name ?? null,
@@ -203,12 +189,50 @@ function NewRecordPage() {
         lng: place?.lng ?? null,
       };
 
-      const { data: rec, error: recErr } = await supabase
-        .from("records")
-        .upsert(payload, { onConflict: "couple_id,date" })
-        .select("id")
-        .single();
-      if (recErr || !rec) throw recErr ?? new Error("기록 저장 실패");
+      let recId: string;
+
+      if (existingRecordId) {
+        // Editing an existing record: always UPDATE by id, never insert.
+        // If the date changed, make sure no other record already exists on the new date.
+        const { data: conflict } = await supabase
+          .from("records")
+          .select("id")
+          .eq("couple_id", me.couple_id)
+          .eq("date", date)
+          .neq("id", existingRecordId)
+          .maybeSingle();
+        if (conflict) {
+          toast.error("해당 날짜에 이미 기록이 있어요. 날짜를 다시 확인해주세요");
+          setSubmitting(false);
+          return;
+        }
+        const { error: updErr } = await supabase
+          .from("records")
+          .update(updatableFields)
+          .eq("id", existingRecordId);
+        if (updErr) throw updErr;
+        recId = existingRecordId;
+      } else {
+        // New record: check for conflict on this date, then insert.
+        const { data: conflict } = await supabase
+          .from("records")
+          .select("id")
+          .eq("couple_id", me.couple_id)
+          .eq("date", date)
+          .maybeSingle();
+        if (conflict) {
+          toast.error("해당 날짜에 이미 기록이 있어요. 날짜를 다시 확인해주세요");
+          setSubmitting(false);
+          return;
+        }
+        const { data: rec, error: recErr } = await supabase
+          .from("records")
+          .insert({ couple_id: me.couple_id, author_id: user.id, ...updatableFields })
+          .select("id")
+          .single();
+        if (recErr || !rec) throw recErr ?? new Error("기록 저장 실패");
+        recId = rec.id;
+      }
 
       // Delete removed existing photos
       if (removedPhotoIds.length > 0) {
@@ -225,13 +249,13 @@ function NewRecordPage() {
         }
         if (!p.file) continue;
         const ext = p.file.name.split(".").pop()?.toLowerCase() || "jpg";
-        const path = `${me.couple_id}/${rec.id}/${i}-${Date.now()}.${ext}`;
+        const path = `${me.couple_id}/${recId}/${i}-${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("record-photos")
           .upload(path, p.file, { contentType: p.file.type, upsert: false });
         if (upErr) throw upErr;
         await supabase.from("photos").insert({
-          record_id: rec.id,
+          record_id: recId,
           storage_url: path,
           order: i,
         });
@@ -243,7 +267,7 @@ function NewRecordPage() {
         const { error: rateErr } = await supabase
           .from("ratings")
           .upsert(
-            { record_id: rec.id, user_id: user.id, score: score * 2 },
+            { record_id: recId, user_id: user.id, score: score * 2 },
             { onConflict: "record_id,user_id" },
           );
         if (rateErr) throw rateErr;
@@ -251,7 +275,7 @@ function NewRecordPage() {
 
       toast.success(existingRecordId ? "기록이 업데이트 됐어요 ✓" : "기록 저장 완료 💕");
       clearDataCache();
-      navigate({ to: "/date/$dateId", params: { dateId: rec.id } });
+      navigate({ to: "/date/$dateId", params: { dateId: recId } });
     } catch (e: any) {
       toast.error(e.message ?? "저장 실패");
     } finally {

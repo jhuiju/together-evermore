@@ -72,8 +72,8 @@ function NavItem({ to, icon: Icon, label }: { to: string; icon: typeof Calendar;
   return (
     <Link
       to={to}
-      className="flex flex-col items-center gap-1 py-3 text-xs text-muted-foreground transition-colors hover:text-primary"
-      activeProps={{ className: "flex flex-col items-center gap-1 py-3 text-xs text-primary" }}
+      className="flex flex-col items-center gap-1 py-3 text-xs text-neutral-400 transition-colors hover:text-[#D4537E]"
+      activeProps={{ className: "flex flex-col items-center gap-1 py-3 text-xs text-[#D4537E]" }}
     >
       <Icon className="w-5 h-5" />
       <span>{label}</span>

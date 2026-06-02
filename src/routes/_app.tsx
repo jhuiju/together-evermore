@@ -45,18 +45,18 @@ function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <header className="border-b border-[#e8ddd0]/60 bg-white sticky top-0 z-10">
+    <div className="min-h-screen bg-[var(--app-bg)] pb-20">
+      <header className="border-b border-[var(--app-divider)] bg-[var(--app-bg)] sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
-          <Heart className="w-5 h-5 text-primary fill-primary" />
-          <h1 className="font-semibold text-foreground">Withlog</h1>
+          <Heart className="w-5 h-5 text-[var(--app-pink)] fill-[var(--app-pink)]" />
+          <h1 className="font-semibold text-[var(--app-text)]">Withlog</h1>
         </div>
       </header>
       <main className="max-w-2xl mx-auto px-4 py-6">
         <Outlet />
       </main>
       {hasCouple && (
-        <nav className="fixed bottom-0 inset-x-0 border-t border-[#e8ddd0]/60 bg-white">
+        <nav className="fixed bottom-0 inset-x-0 border-t border-[var(--app-divider)] bg-[var(--app-bg)]">
           <div className="max-w-2xl mx-auto grid grid-cols-3">
             <NavItem to="/calendar" icon={Calendar} label="캘린더" />
             <NavItem to="/map" icon={Map} label="지도" />
@@ -72,8 +72,8 @@ function NavItem({ to, icon: Icon, label }: { to: string; icon: typeof Calendar;
   return (
     <Link
       to={to}
-      className="flex flex-col items-center gap-1 py-3 text-xs text-neutral-400 transition-colors hover:text-[#D4537E]"
-      activeProps={{ className: "flex flex-col items-center gap-1 py-3 text-xs text-[#D4537E]" }}
+      className="flex flex-col items-center gap-1 py-3 text-xs text-[var(--app-nav-inactive)] transition-colors hover:text-[var(--app-pink)]"
+      activeProps={{ className: "flex flex-col items-center gap-1 py-3 text-xs text-[var(--app-pink)]" }}
     >
       <Icon className="w-5 h-5" />
       <span>{label}</span>

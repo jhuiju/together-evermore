@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Loader2, MapPin, Pencil, Star, Trash2 } from "lucide-react";
+import { X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -124,11 +125,35 @@ function DateDetailPage() {
   const [ratings, setRatings] = useState<RatingRow[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [carouselIdx, setCarouselIdx] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIdx, setViewerIdx] = useState(0);
+  const viewerTouchStart = useRef<number | null>(null);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [pendingScore, setPendingScore] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const [myCoupleId, setMyCoupleId] = useState<string | null>(null);
   const touchStart = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!viewerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setViewerOpen(false);
+      if (e.key === "ArrowLeft") setViewerIdx((i) => Math.max(0, i - 1));
+      if (e.key === "ArrowRight") setViewerIdx((i) => Math.min(photos.length - 1, i + 1));
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [viewerOpen, photos.length]);
+
+  function openViewer(i: number) {
+    setViewerIdx(i);
+    setViewerOpen(true);
+  }
 
   async function load() {
     setLoading(true);

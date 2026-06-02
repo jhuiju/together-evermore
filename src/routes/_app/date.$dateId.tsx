@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Loader2, MapPin, Pencil, Star, Trash2 } from "lucide-react";
+import { X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -124,11 +125,35 @@ function DateDetailPage() {
   const [ratings, setRatings] = useState<RatingRow[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [carouselIdx, setCarouselIdx] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIdx, setViewerIdx] = useState(0);
+  const viewerTouchStart = useRef<number | null>(null);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [pendingScore, setPendingScore] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const [myCoupleId, setMyCoupleId] = useState<string | null>(null);
   const touchStart = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!viewerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setViewerOpen(false);
+      if (e.key === "ArrowLeft") setViewerIdx((i) => Math.max(0, i - 1));
+      if (e.key === "ArrowRight") setViewerIdx((i) => Math.min(photos.length - 1, i + 1));
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [viewerOpen, photos.length]);
+
+  function openViewer(i: number) {
+    setViewerIdx(i);
+    setViewerOpen(true);
+  }
 
   async function load() {
     setLoading(true);
@@ -276,7 +301,8 @@ function DateDetailPage() {
               key={p.id}
               src={photoUrl(p)}
               alt={`사진 ${i + 1}`}
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${i === carouselIdx ? "opacity-100" : "opacity-0"}`}
+              onClick={() => i === carouselIdx && openViewer(i)}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${i === carouselIdx ? "opacity-100 cursor-zoom-in" : "opacity-0 pointer-events-none"}`}
             />
           ))}
           {photos.length > 1 && (
@@ -446,6 +472,83 @@ function DateDetailPage() {
               {submittingRating ? <Loader2 className="w-4 h-4 animate-spin" /> : "저장"}
             </Button>
           </Card>
+        </div>
+      )}
+
+      {viewerOpen && photos.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 animate-fade-in flex items-center justify-center"
+          style={{
+            paddingTop: "env(safe-area-inset-top)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+            paddingLeft: "env(safe-area-inset-left)",
+            paddingRight: "env(safe-area-inset-right)",
+          }}
+          onClick={() => setViewerOpen(false)}
+          onTouchStart={(e) => (viewerTouchStart.current = e.touches[0].clientX)}
+          onTouchEnd={(e) => {
+            if (viewerTouchStart.current == null) return;
+            const dx = e.changedTouches[0].clientX - viewerTouchStart.current;
+            if (dx < -40) setViewerIdx((i) => Math.min(photos.length - 1, i + 1));
+            if (dx > 40) setViewerIdx((i) => Math.max(0, i - 1));
+            viewerTouchStart.current = null;
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="사진 보기"
+        >
+          <div
+            className="absolute top-0 inset-x-0 flex items-center justify-center pt-3 text-white text-sm select-none pointer-events-none"
+            style={{ paddingTop: `calc(env(safe-area-inset-top) + 12px)` }}
+          >
+            {viewerIdx + 1} / {photos.length}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setViewerOpen(false);
+            }}
+            className="absolute top-0 right-0 m-3 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+            style={{ marginTop: `calc(env(safe-area-inset-top) + 12px)` }}
+            aria-label="닫기"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={photoUrl(photos[viewerIdx])}
+            alt={`사진 ${viewerIdx + 1}`}
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-full object-contain animate-fade-in"
+          />
+          {photos.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setViewerIdx((i) => Math.max(0, i - 1));
+                }}
+                disabled={viewerIdx === 0}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white disabled:opacity-30"
+                aria-label="이전 사진"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setViewerIdx((i) => Math.min(photos.length - 1, i + 1));
+                }}
+                disabled={viewerIdx === photos.length - 1}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white disabled:opacity-30"
+                aria-label="다음 사진"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

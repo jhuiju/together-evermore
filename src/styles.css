@@ -96,6 +96,65 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+
+  /* App semantic tokens (light) */
+  --app-bg: #ffffff;
+  --app-surface: #ffffff;
+  --app-border: #e8ddd0;
+  --app-cell-border: #e8ddd0;
+  --app-divider: #e8ddd0;
+  --app-text: #2C2C2A;
+  --app-muted: #9ca3af;
+  --app-nav-inactive: #9ca3af;
+  --app-pink: #D4537E;
+  --app-pink-hover: #bf426c;
+  --app-purple: #7F77DD;
+  --app-pink-badge-bg: #D4537E;
+  --app-pink-badge-text: #ffffff;
+  --app-purple-badge-bg: #7F77DD;
+  --app-purple-badge-text: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* App semantic tokens (dark) */
+    --app-bg: #1A1A1A;
+    --app-surface: #242424;
+    --app-border: #2C2C2A;
+    --app-cell-border: #3A3028;
+    --app-divider: #2C2C2A;
+    --app-text: #F0EBE3;
+    --app-muted: #5F5E5A;
+    --app-nav-inactive: #444441;
+    --app-pink: #ED93B1;
+    --app-pink-hover: #d77f9d;
+    --app-purple: #AFA9EC;
+    --app-pink-badge-bg: #993556;
+    --app-pink-badge-text: #F4C0D1;
+    --app-purple-badge-bg: #534AB7;
+    --app-purple-badge-text: #CECBF6;
+
+    /* shadcn semantic tokens (dark) */
+    --background: #1A1A1A;
+    --foreground: #F0EBE3;
+    --card: #242424;
+    --card-foreground: #F0EBE3;
+    --popover: #242424;
+    --popover-foreground: #F0EBE3;
+    --primary: #ED93B1;
+    --primary-foreground: #1A1A1A;
+    --secondary: #2C2C2A;
+    --secondary-foreground: #F0EBE3;
+    --muted: #242424;
+    --muted-foreground: #5F5E5A;
+    --accent: #2C2C2A;
+    --accent-foreground: #F0EBE3;
+    --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: #F0EBE3;
+    --border: #2C2C2A;
+    --input: #2C2C2A;
+    --ring: #ED93B1;
+  }
 }
 
 .dark {
@@ -139,7 +198,7 @@
   }
 
   body {
-    background-color: #ffffff;
+    background-color: var(--app-bg);
     color: var(--color-foreground);
   }
 }

@@ -94,30 +94,30 @@ function CalendarPage() {
   }, [anniversary]);
 
   return (
-    <div className="space-y-5 bg-white text-[#2C2C2A]">
-      <div className="space-y-1 pb-4 border-b border-[#e8ddd0]">
-        <p className="text-xs text-neutral-400">우리들의 캘린더</p>
+    <div className="space-y-5 bg-[var(--app-bg)] text-[var(--app-text)]">
+      <div className="space-y-1 pb-4 border-b border-[var(--app-divider)]">
+        <p className="text-xs text-[var(--app-muted)]">우리들의 캘린더</p>
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-[#2C2C2A]">{coupleName}</h2>
+          <h2 className="text-2xl font-bold text-[var(--app-text)]">{coupleName}</h2>
           <Link to="/record/new">
-            <Button size="icon" className="rounded-full bg-[#D4537E] hover:bg-[#bf426c] text-white shadow-sm">
+            <Button size="icon" className="rounded-full bg-[var(--app-pink)] hover:bg-[var(--app-pink-hover)] text-white shadow-sm">
               <Plus className="w-5 h-5" />
             </Button>
           </Link>
         </div>
         {daysTogether != null && (
-          <p className="text-xs text-[#D4537E] font-medium">함께한 지 {daysTogether}일째 ♥</p>
+          <p className="text-xs text-[var(--app-pink)] font-medium">함께한 지 {daysTogether}일째 ♥</p>
         )}
       </div>
 
       <div className="flex items-center justify-center gap-6">
-        <button onClick={() => setCursor(new Date(year, month - 1, 1))} className="p-1.5 text-[#2C2C2A]/70 hover:text-[#2C2C2A]">
+        <button onClick={() => setCursor(new Date(year, month - 1, 1))} className="p-1.5 text-[var(--app-muted)] hover:text-[var(--app-text)]">
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-base font-semibold text-[#2C2C2A]">
+        <h2 className="text-base font-semibold text-[var(--app-text)]">
           {year}년 {month + 1}월
         </h2>
-        <button onClick={() => setCursor(new Date(year, month + 1, 1))} className="p-1.5 text-[#2C2C2A]/70 hover:text-[#2C2C2A]">
+        <button onClick={() => setCursor(new Date(year, month + 1, 1))} className="p-1.5 text-[var(--app-muted)] hover:text-[var(--app-text)]">
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
@@ -127,7 +127,7 @@ function CalendarPage() {
           <div
             key={d}
             className={`py-1 font-medium ${
-              i === 0 ? "text-[#D4537E]" : i === 6 ? "text-[#7F77DD]" : "text-neutral-400"
+              i === 0 ? "text-[var(--app-pink)]" : i === 6 ? "text-[var(--app-purple)]" : "text-[var(--app-muted)]"
             }`}
           >
             {d}
@@ -144,7 +144,7 @@ function CalendarPage() {
           const rec = recordByDay.get(dateStr);
           const dow = (firstDow + d - 1) % 7;
           const dayColor =
-            dow === 0 ? "text-[#D4537E]" : dow === 6 ? "text-[#7F77DD]" : "text-[#2C2C2A]";
+            dow === 0 ? "text-[var(--app-pink)]" : dow === 6 ? "text-[var(--app-purple)]" : "text-[var(--app-text)]";
           const hasMine = rec?.myScore != null;
           const hasPartner = rec?.partnerScore != null;
           const bothRated = hasMine && hasPartner;
@@ -157,16 +157,16 @@ function CalendarPage() {
               search={!rec ? { date: dateStr } : (undefined as never)}
               className={`relative aspect-[3/4] flex flex-col p-1 ${
                 rec
-                  ? "bg-white rounded-lg border border-[#e8ddd0]/80 overflow-hidden"
+                  ? "bg-[var(--app-surface)] rounded-lg border border-[var(--app-cell-border)] overflow-hidden"
                   : ""
               }`}
             >
-              <span className={`text-[11px] font-medium leading-none ${rec ? "text-[#D4537E]" : dayColor}`}>
+              <span className={`text-[11px] font-medium leading-none ${rec ? "text-[var(--app-pink)]" : dayColor}`}>
                 {d}
               </span>
 
               {rec?.thumb && (
-                <div className="mt-1 flex-1 rounded-[4px] overflow-hidden bg-neutral-100">
+                <div className="mt-1 flex-1 rounded-[4px] overflow-hidden bg-[var(--app-border)]">
                   <img src={rec.thumb} alt="" className="w-full h-full object-cover" />
                 </div>
               )}
@@ -175,15 +175,15 @@ function CalendarPage() {
                 <div className="mt-1 flex gap-0.5">
                   {bothRated ? (
                     <>
-                      <span className="flex-1 text-[10px] leading-tight rounded bg-[#D4537E] text-white text-center py-0.5 font-medium">
+                      <span className="flex-1 text-[10px] leading-tight rounded bg-[var(--app-pink-badge-bg)] text-[var(--app-pink-badge-text)] text-center py-0.5 font-medium">
                         ♥{rec.myScore}
                       </span>
-                      <span className="flex-1 text-[10px] leading-tight rounded bg-[#7F77DD] text-white text-center py-0.5 font-medium">
+                      <span className="flex-1 text-[10px] leading-tight rounded bg-[var(--app-purple-badge-bg)] text-[var(--app-purple-badge-text)] text-center py-0.5 font-medium">
                         ♥{rec.partnerScore}
                       </span>
                     </>
                   ) : (
-                    <span className="flex-1 text-[10px] leading-tight rounded bg-[#D4537E] text-white text-center py-0.5 font-medium">
+                    <span className="flex-1 text-[10px] leading-tight rounded bg-[var(--app-pink-badge-bg)] text-[var(--app-pink-badge-text)] text-center py-0.5 font-medium">
                       ♥{hasMine ? rec.myScore : rec.partnerScore}
                     </span>
                   )}

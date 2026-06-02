@@ -301,7 +301,8 @@ function DateDetailPage() {
               key={p.id}
               src={photoUrl(p)}
               alt={`사진 ${i + 1}`}
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${i === carouselIdx ? "opacity-100" : "opacity-0"}`}
+              onClick={() => i === carouselIdx && openViewer(i)}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${i === carouselIdx ? "opacity-100 cursor-zoom-in" : "opacity-0 pointer-events-none"}`}
             />
           ))}
           {photos.length > 1 && (

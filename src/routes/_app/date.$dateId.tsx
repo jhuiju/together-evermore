@@ -474,6 +474,83 @@ function DateDetailPage() {
           </Card>
         </div>
       )}
+
+      {viewerOpen && photos.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 animate-fade-in flex items-center justify-center"
+          style={{
+            paddingTop: "env(safe-area-inset-top)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+            paddingLeft: "env(safe-area-inset-left)",
+            paddingRight: "env(safe-area-inset-right)",
+          }}
+          onClick={() => setViewerOpen(false)}
+          onTouchStart={(e) => (viewerTouchStart.current = e.touches[0].clientX)}
+          onTouchEnd={(e) => {
+            if (viewerTouchStart.current == null) return;
+            const dx = e.changedTouches[0].clientX - viewerTouchStart.current;
+            if (dx < -40) setViewerIdx((i) => Math.min(photos.length - 1, i + 1));
+            if (dx > 40) setViewerIdx((i) => Math.max(0, i - 1));
+            viewerTouchStart.current = null;
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="사진 보기"
+        >
+          <div
+            className="absolute top-0 inset-x-0 flex items-center justify-center pt-3 text-white text-sm select-none pointer-events-none"
+            style={{ paddingTop: `calc(env(safe-area-inset-top) + 12px)` }}
+          >
+            {viewerIdx + 1} / {photos.length}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setViewerOpen(false);
+            }}
+            className="absolute top-0 right-0 m-3 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+            style={{ marginTop: `calc(env(safe-area-inset-top) + 12px)` }}
+            aria-label="닫기"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={photoUrl(photos[viewerIdx])}
+            alt={`사진 ${viewerIdx + 1}`}
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-full object-contain animate-fade-in"
+          />
+          {photos.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setViewerIdx((i) => Math.max(0, i - 1));
+                }}
+                disabled={viewerIdx === 0}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white disabled:opacity-30"
+                aria-label="이전 사진"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setViewerIdx((i) => Math.min(photos.length - 1, i + 1));
+                }}
+                disabled={viewerIdx === photos.length - 1}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white disabled:opacity-30"
+                aria-label="다음 사진"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

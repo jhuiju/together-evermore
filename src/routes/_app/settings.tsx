@@ -70,12 +70,14 @@ function SettingsPage() {
         if (me.couple_id) {
           const { data: cp } = await supabase
             .from("couples")
-            .select("couple_name, anniversary")
+            .select("couple_name, anniversary, invite_code, user2_id")
             .eq("id", me.couple_id)
             .maybeSingle();
           if (cp) {
             setCoupleName(cp.couple_name ?? "우리");
             setAnniversary(cp.anniversary ?? "");
+            setInviteCode(cp.invite_code ?? "");
+            setUser2Id(cp.user2_id ?? null);
           }
         }
       }

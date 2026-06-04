@@ -32,6 +32,8 @@ function SettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [coupleName, setCoupleName] = useState("");
   const [anniversary, setAnniversary] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [user2Id, setUser2Id] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [savingNickname, setSavingNickname] = useState(false);

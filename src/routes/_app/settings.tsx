@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Camera, Eye, EyeOff, Heart, Loader2, LogOut, Shield, User as UserIcon } from "lucide-react";
+import { Camera, Eye, EyeOff, Heart, Link2, Loader2, LogOut, Shield, User as UserIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -32,6 +32,8 @@ function SettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [coupleName, setCoupleName] = useState("");
   const [anniversary, setAnniversary] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [user2Id, setUser2Id] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [savingNickname, setSavingNickname] = useState(false);
@@ -68,12 +70,14 @@ function SettingsPage() {
         if (me.couple_id) {
           const { data: cp } = await supabase
             .from("couples")
-            .select("couple_name, anniversary")
+            .select("couple_name, anniversary, invite_code, user2_id")
             .eq("id", me.couple_id)
             .maybeSingle();
           if (cp) {
             setCoupleName(cp.couple_name ?? "우리");
             setAnniversary(cp.anniversary ?? "");
+            setInviteCode(cp.invite_code ?? "");
+            setUser2Id(cp.user2_id ?? null);
           }
         }
       }
@@ -334,6 +338,47 @@ function SettingsPage() {
           </div>
         )}
       </Card>
+
+      {/* Couple invite code */}
+      {coupleId && inviteCode && (
+        <Card className="p-6 space-y-4">
+          <h3 className="font-medium flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-primary" /> 커플 연결 코드
+            {user2Id && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                연결됨 ✓
+              </span>
+            )}
+          </h3>
+
+          <div className="flex items-center justify-center gap-1.5">
+            {inviteCode.split("").map((char, i) => (
+              <div
+                key={i}
+                className="w-9 h-11 flex items-center justify-center rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] text-lg font-bold tracking-wider"
+              >
+                {char}
+              </div>
+            ))}
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={() => {
+              navigator.clipboard.writeText(inviteCode).then(() => {
+                toast.success("코드가 복사됐어요 ✓");
+              });
+            }}
+            className="w-full"
+          >
+            코드 복사하기
+          </Button>
+
+          <p className="text-xs text-center text-muted-foreground">
+            상대방에게 이 코드를 공유하면 커플로 연결할 수 있어요
+          </p>
+        </Card>
+      )}
 
       {/* Password change */}
       <Card className="p-6 space-y-4">

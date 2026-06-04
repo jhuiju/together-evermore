@@ -15,6 +15,19 @@ const TRACKING_ID = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_
 
 const TAGS = ["전체", "데이트", "여행", "일상", "특별한날"] as const;
 
+const TAG_COLORS: Record<string, string> = {
+  "데이트": "#D4537E",
+  "여행": "#7F77DD",
+  "일상": "#1D9E75",
+  "특별한날": "#E8A838",
+  "": "#B4B2A9",
+};
+
+function getTagColor(tag: string | null): string {
+  if (!tag) return "#B4B2A9";
+  return TAG_COLORS[tag] ?? "#B4B2A9";
+}
+
 type Pin = {
   id: string;
   date: string;
@@ -145,13 +158,14 @@ function MapPage() {
     if (filtered.length === 0) return;
     const bounds = new g.maps.LatLngBounds();
     filtered.forEach((p) => {
+      const color = getTagColor(p.tag);
       const marker = new g.maps.Marker({
         map: mapRef.current,
         position: { lat: p.lat, lng: p.lng },
         icon: {
           path: g.maps.SymbolPath.CIRCLE,
-          scale: 9,
-          fillColor: "#ec4899",
+          scale: 10,
+          fillColor: color,
           fillOpacity: 1,
           strokeColor: "#fff",
           strokeWeight: 2,
@@ -163,8 +177,10 @@ function MapPage() {
           : "";
         const avg = p.avg != null ? `⭐ ${p.avg.toFixed(1)}` : "평점 없음";
         const name = p.location_name ?? "장소";
+        const tagLabel = p.tag ?? "태그 없음";
         infoRef.current.setContent(
           `<div style="width:200px;font-family:inherit">
+            <div style="display:inline-block;padding:3px 8px;border-radius:9999px;font-size:11px;font-weight:600;color:#fff;background:${color};margin-bottom:6px">${tagLabel}</div>
             ${thumb}
             <div style="font-size:12px;color:#888">${p.date}</div>
             <div style="font-weight:600;margin:2px 0">${name}</div>
@@ -190,19 +206,28 @@ function MapPage() {
       {/* Filter bar */}
       <div className="absolute top-3 inset-x-3 z-10 space-y-2">
         <div className="bg-card/95 backdrop-blur rounded-xl shadow-lg border border-border/60 p-2 flex gap-1.5 overflow-x-auto">
-          {TAGS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTag(t)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors ${
-                tag === t
-                  ? "bg-gradient-to-r from-primary to-accent text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+          {TAGS.map((t) => {
+            const color = getTagColor(t === "전체" ? null : t);
+            const isActive = tag === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setTag(t)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors flex items-center gap-1 ${
+                  isActive
+                    ? "text-white"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+                style={isActive ? { backgroundColor: color } : undefined}
+              >
+                <span
+                  className="inline-block w-2 h-2 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+                {t}
+              </button>
+            );
+          })}
         </div>
         <div className="bg-card/95 backdrop-blur rounded-xl shadow-lg border border-border/60 p-2 flex items-center gap-2">
           <Input
@@ -232,6 +257,22 @@ function MapPage() {
       </div>
 
       <div ref={mapEl} className="w-full h-full bg-muted" />
+
+      {/* Legend */}
+      {!loading && filtered.length > 0 && (
+        <div className="absolute bottom-6 left-4 z-10 bg-[var(--app-surface)]/90 backdrop-blur rounded-lg border border-[var(--app-border)] shadow-md p-2.5 space-y-1.5">
+          <p className="text-[10px] font-semibold text-[var(--app-muted)] mb-1">범례</p>
+          {["데이트", "여행", "일상", "특별한날"].map((t) => (
+            <div key={t} className="flex items-center gap-1.5">
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: TAG_COLORS[t] }}
+              />
+              <span className="text-[11px] text-[var(--app-text)]">{t}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm">

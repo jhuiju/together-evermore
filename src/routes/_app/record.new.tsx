@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { searchPlaces } from "@/lib/places.functions";
+import { notifyPartnerOfNewRecord } from "@/lib/push.functions";
 import { getSignedPhotoUrls } from "@/lib/photos";
 import { clearDataCache } from "@/lib/sw-cache";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ function NewRecordPage() {
   const { date: dateParam } = Route.useSearch();
   const navigate = useNavigate();
   const placesFn = useServerFn(searchPlaces);
+  const notifyFn = useServerFn(notifyPartnerOfNewRecord);
 
   const [date, setDate] = useState(dateParam || todayStr());
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -190,6 +192,7 @@ function NewRecordPage() {
       };
 
       let recId: string;
+      let isNewRecord = false;
 
       if (existingRecordId) {
         // Editing an existing record: always UPDATE by id, never insert.
@@ -232,6 +235,7 @@ function NewRecordPage() {
           .single();
         if (recErr || !rec) throw recErr ?? new Error("기록 저장 실패");
         recId = rec.id;
+        isNewRecord = true;
       }
 
       // Delete removed existing photos
@@ -275,6 +279,11 @@ function NewRecordPage() {
 
       toast.success(existingRecordId ? "기록이 업데이트 됐어요 ✓" : "기록 저장 완료 💕");
       clearDataCache();
+      if (isNewRecord) {
+        notifyFn({ data: { recordId: recId } }).catch((e) =>
+          console.error("[push] notify failed", e),
+        );
+      }
       navigate({ to: "/date/$dateId", params: { dateId: recId } });
     } catch (e: any) {
       toast.error(e.message ?? "저장 실패");

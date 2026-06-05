@@ -25,7 +25,7 @@ export const savePushSubscription = createServerFn({ method: "POST" })
       .upsert(
         {
           user_id: userId,
-          subscription: sub as unknown as Record<string, unknown>,
+          subscription: sub as any,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id,endpoint" },

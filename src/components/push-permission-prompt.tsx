@@ -18,9 +18,12 @@ function urlBase64ToUint8Array(base64String: string) {
   return out;
 }
 
+type GetVapidFn = () => Promise<{ publicKey: string }>;
+type SaveSubFn = (args: { data: { subscription: any } }) => Promise<unknown>;
+
 export async function ensurePushSubscribed(
-  getVapidPublicKeyFn: typeof getVapidPublicKey,
-  saveSubscriptionFn: typeof savePushSubscription,
+  getVapidPublicKeyFn: GetVapidFn,
+  saveSubscriptionFn: SaveSubFn,
 ) {
   if (typeof window === "undefined") return;
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
@@ -49,7 +52,7 @@ export function PushPermissionPrompt() {
 
     // If already granted, just sync the subscription silently.
     if (Notification.permission === "granted") {
-      ensurePushSubscribed(getKey, saveSub).catch(() => {});
+      ensurePushSubscribed(getKey as unknown as GetVapidFn, saveSub as unknown as SaveSubFn).catch(() => {});
       return;
     }
     if (Notification.permission === "denied") return;
@@ -71,7 +74,7 @@ export function PushPermissionPrompt() {
         if (perm === "denied") toast.error("알림이 차단됐어요");
         return;
       }
-      await ensurePushSubscribed(getKey, saveSub);
+      await ensurePushSubscribed(getKey as unknown as GetVapidFn, saveSub as unknown as SaveSubFn);
       toast.success("알림이 켜졌어요 🔔");
       localStorage.removeItem(LATER_KEY);
       setVisible(false);

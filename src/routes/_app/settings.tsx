@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Camera, Eye, EyeOff, Heart, Link2, Loader2, LogOut, Shield, User as UserIcon } from "lucide-react";
+import { Bell, BellOff, Camera, Eye, EyeOff, Heart, Link2, Loader2, LogOut, Shield, User as UserIcon } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { deletePushSubscription, getVapidPublicKey, savePushSubscription } from "@/lib/push.functions";
+import { ensurePushSubscribed } from "@/components/push-permission-prompt";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -24,6 +28,64 @@ function daysSince(date: string | null) {
 function SettingsPage() {
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
+  const getKey = useServerFn(getVapidPublicKey);
+  const saveSub = useServerFn(savePushSubscription);
+  const deleteSub = useServerFn(deletePushSubscription);
+
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported",
+  );
+  const [notifSubscribed, setNotifSubscribed] = useState(false);
+  const [notifBusy, setNotifBusy] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setNotifSubscribed(!!sub))
+      .catch(() => setNotifSubscribed(false));
+  }, []);
+
+  async function toggleNotifications(next: boolean) {
+    setNotifBusy(true);
+    try {
+      if (next) {
+        if (!("Notification" in window)) {
+          toast.error("이 브라우저는 알림을 지원하지 않아요");
+          return;
+        }
+        let perm = Notification.permission;
+        if (perm === "default") perm = await Notification.requestPermission();
+        setNotifPermission(perm);
+        if (perm !== "granted") {
+          toast.error("알림 권한이 필요해요");
+          return;
+        }
+        await ensurePushSubscribed(
+          getKey as any,
+          saveSub as any,
+        );
+        setNotifSubscribed(true);
+        toast.success("알림이 켜졌어요 🔔");
+      } else {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          const endpoint = sub.endpoint;
+          await sub.unsubscribe().catch(() => {});
+          await deleteSub({ data: { endpoint } }).catch(() => {});
+        }
+        setNotifSubscribed(false);
+        toast.success("알림을 껐어요");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error("알림 설정에 실패했어요");
+    } finally {
+      setNotifBusy(false);
+    }
+  }
 
   const [userId, setUserId] = useState<string | null>(null);
   const [coupleId, setCoupleId] = useState<string | null>(null);
@@ -379,6 +441,50 @@ function SettingsPage() {
           </p>
         </Card>
       )}
+
+      {/* Notifications */}
+      <Card className="p-6 space-y-3">
+        <h3 className="font-medium flex items-center gap-2">
+          {notifSubscribed && notifPermission === "granted" ? (
+            <Bell className="w-4 h-4 text-[var(--app-pink)]" />
+          ) : (
+            <BellOff className="w-4 h-4 text-muted-foreground" />
+          )}
+          알림
+          <span
+            className={`ml-auto text-xs font-semibold rounded-full px-2 py-0.5 ${
+              notifPermission === "granted" && notifSubscribed
+                ? "bg-emerald-100 text-emerald-700"
+                : notifPermission === "denied"
+                ? "bg-red-100 text-red-700"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {notifPermission === "unsupported"
+              ? "지원 안 함"
+              : notifPermission === "denied"
+              ? "거부됨"
+              : notifSubscribed && notifPermission === "granted"
+              ? "허용됨"
+              : "꺼짐"}
+          </span>
+        </h3>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            파트너의 새 기록 알림
+          </p>
+          <Switch
+            checked={notifSubscribed && notifPermission === "granted"}
+            disabled={notifBusy || notifPermission === "denied" || notifPermission === "unsupported"}
+            onCheckedChange={toggleNotifications}
+          />
+        </div>
+        {notifPermission === "denied" && (
+          <p className="text-xs text-muted-foreground">
+            브라우저 설정에서 이 사이트의 알림을 허용해주세요
+          </p>
+        )}
+      </Card>
 
       {/* Password change */}
       <Card className="p-6 space-y-4">

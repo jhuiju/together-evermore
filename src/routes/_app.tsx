@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Heart, Calendar, Map, Settings, Loader2 } from "lucide-react";
+import { PushPermissionPrompt } from "@/components/push-permission-prompt";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -64,6 +65,7 @@ function AppLayout() {
           </div>
         </nav>
       )}
+      {hasCouple && <PushPermissionPrompt />}
     </div>
   );
 }

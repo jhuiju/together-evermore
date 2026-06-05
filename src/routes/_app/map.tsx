@@ -39,6 +39,56 @@ type Pin = {
   avg: number | null;
 };
 
+type PinGroup = {
+  key: string;
+  lat: number;
+  lng: number;
+  location_name: string | null;
+  pins: Pin[];
+};
+
+// Haversine distance in meters
+function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function groupPins(pins: Pin[]): PinGroup[] {
+  const groups: PinGroup[] = [];
+  for (const p of pins) {
+    // Try match by location_name first
+    let matched: PinGroup | undefined;
+    if (p.location_name) {
+      matched = groups.find((g) => g.location_name && g.location_name === p.location_name);
+    }
+    if (!matched) {
+      matched = groups.find((g) => distanceMeters(g, p) <= 50);
+    }
+    if (matched) {
+      matched.pins.push(p);
+      // Update centroid
+      const n = matched.pins.length;
+      matched.lat = (matched.lat * (n - 1) + p.lat) / n;
+      matched.lng = (matched.lng * (n - 1) + p.lng) / n;
+    } else {
+      groups.push({
+        key: p.id,
+        lat: p.lat,
+        lng: p.lng,
+        location_name: p.location_name,
+        pins: [p],
+      });
+    }
+  }
+  return groups;
+}
+
 let mapsLoading: Promise<void> | null = null;
 function loadMaps(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
@@ -127,6 +177,8 @@ function MapPage() {
     });
   }, [pins, tag, from, to]);
 
+  const groups = useMemo(() => groupPins(filtered), [filtered]);
+
   // Init map once
   useEffect(() => {
     let cancelled = false;
@@ -149,57 +201,121 @@ function MapPage() {
     };
   }, []);
 
-  // Render markers when filtered changes
+  // Render markers when groups change
   useEffect(() => {
     const g = (window as any).google;
     if (!g?.maps || !mapRef.current) return;
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
-    if (filtered.length === 0) return;
+    if (groups.length === 0) return;
     const bounds = new g.maps.LatLngBounds();
-    filtered.forEach((p) => {
-      const color = getTagColor(p.tag);
-      const marker = new g.maps.Marker({
-        map: mapRef.current,
-        position: { lat: p.lat, lng: p.lng },
-        icon: {
+    groups.forEach((grp) => {
+      const count = grp.pins.length;
+      // Dominant tag color: most common, fallback to first
+      const tagCount = new Map<string, number>();
+      grp.pins.forEach((p) => {
+        const key = p.tag ?? "";
+        tagCount.set(key, (tagCount.get(key) ?? 0) + 1);
+      });
+      let dominantTag: string | null = grp.pins[0].tag;
+      let max = 0;
+      tagCount.forEach((v, k) => {
+        if (v > max) { max = v; dominantTag = k || null; }
+      });
+      const color = getTagColor(dominantTag);
+
+      let icon: any;
+      if (count > 1) {
+        // SVG marker with count badge in top-right
+        const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+  <circle cx="18" cy="26" r="10" fill="${color}" stroke="#fff" stroke-width="2"/>
+  <circle cx="32" cy="12" r="9" fill="#fff" stroke="${color}" stroke-width="2"/>
+  <text x="32" y="15" text-anchor="middle" font-size="11" font-weight="700" font-family="-apple-system,system-ui,sans-serif" fill="#2C2C2A">${count}</text>
+</svg>`.trim();
+        icon = {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+          scaledSize: new g.maps.Size(44, 44),
+          anchor: new g.maps.Point(18, 36),
+        };
+      } else {
+        icon = {
           path: g.maps.SymbolPath.CIRCLE,
           scale: 10,
           fillColor: color,
           fillOpacity: 1,
           strokeColor: "#fff",
           strokeWeight: 2,
-        },
+        };
+      }
+
+      const marker = new g.maps.Marker({
+        map: mapRef.current,
+        position: { lat: grp.lat, lng: grp.lng },
+        icon,
       });
+
       marker.addListener("click", () => {
-        const thumb = p.thumb
-          ? `<img src="${p.thumb}" style="width:100%;height:88px;object-fit:cover;border-radius:8px;margin-bottom:8px"/>`
-          : "";
-        const avg = p.avg != null ? `⭐ ${p.avg.toFixed(1)}` : "평점 없음";
-        const name = p.location_name ?? "장소";
-        const tagLabel = p.tag ?? "태그 없음";
-        infoRef.current.setContent(
-          `<div style="width:200px;font-family:inherit">
-            <div style="display:inline-block;padding:3px 8px;border-radius:9999px;font-size:11px;font-weight:600;color:#fff;background:${color};margin-bottom:6px">${tagLabel}</div>
-            ${thumb}
-            <div style="font-size:12px;color:#888">${p.date}</div>
-            <div style="font-weight:600;margin:2px 0">${name}</div>
-            <div style="font-size:13px;margin-bottom:8px">${avg}</div>
-            <a href="/date/${p.id}" style="color:#ec4899;font-weight:600;font-size:13px;text-decoration:none">자세히 보기 →</a>
-          </div>`,
-        );
+        if (count === 1) {
+          const p = grp.pins[0];
+          const c = getTagColor(p.tag);
+          const thumb = p.thumb
+            ? `<img src="${p.thumb}" style="width:100%;height:88px;object-fit:cover;border-radius:8px;margin-bottom:8px"/>`
+            : "";
+          const avg = p.avg != null ? `⭐ ${p.avg.toFixed(1)}` : "평점 없음";
+          const name = p.location_name ?? "장소";
+          const tagLabel = p.tag ?? "태그 없음";
+          infoRef.current.setContent(
+            `<div style="width:200px;font-family:inherit">
+              <div style="display:inline-block;padding:3px 8px;border-radius:9999px;font-size:11px;font-weight:600;color:#fff;background:${c};margin-bottom:6px">${tagLabel}</div>
+              ${thumb}
+              <div style="font-size:12px;color:#888">${p.date}</div>
+              <div style="font-weight:600;margin:2px 0">${name}</div>
+              <div style="font-size:13px;margin-bottom:8px">${avg}</div>
+              <a href="/date/${p.id}" style="color:#ec4899;font-weight:600;font-size:13px;text-decoration:none">자세히 보기 →</a>
+            </div>`,
+          );
+        } else {
+          const name = grp.location_name ?? "이 장소";
+          const sorted = [...grp.pins].sort((a, b) => (a.date < b.date ? 1 : -1));
+          const items = sorted.map((p) => {
+            const c = getTagColor(p.tag);
+            const tagLabel = p.tag ?? "태그 없음";
+            const avg = p.avg != null ? `⭐ ${p.avg.toFixed(1)}` : "평점 없음";
+            const thumb = p.thumb
+              ? `<img src="${p.thumb}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0"/>`
+              : `<div style="width:44px;height:44px;border-radius:6px;background:#eee;flex-shrink:0"></div>`;
+            return `
+              <a href="/date/${p.id}" style="display:flex;align-items:center;gap:8px;padding:6px;border-radius:8px;text-decoration:none;color:inherit;border-bottom:1px solid #f0f0f0">
+                ${thumb}
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+                    <span style="display:inline-block;padding:1px 6px;border-radius:9999px;font-size:10px;font-weight:600;color:#fff;background:${c}">${tagLabel}</span>
+                    <span style="font-size:11px;color:#888">${p.date}</span>
+                  </div>
+                  <div style="font-size:12px;color:#2C2C2A">${avg}</div>
+                </div>
+              </a>`;
+          }).join("");
+          infoRef.current.setContent(
+            `<div style="width:240px;font-family:inherit">
+              <div style="font-weight:600;margin-bottom:6px;font-size:13px">${name} <span style="color:#888;font-weight:400">· ${count}개의 기록</span></div>
+              <div style="max-height:280px;overflow-y:auto">${items}</div>
+            </div>`,
+          );
+        }
         infoRef.current.open({ map: mapRef.current, anchor: marker });
       });
       markersRef.current.push(marker);
-      bounds.extend({ lat: p.lat, lng: p.lng });
+      bounds.extend({ lat: grp.lat, lng: grp.lng });
     });
-    if (filtered.length === 1) {
-      mapRef.current.setCenter({ lat: filtered[0].lat, lng: filtered[0].lng });
+    if (groups.length === 1) {
+      mapRef.current.setCenter({ lat: groups[0].lat, lng: groups[0].lng });
       mapRef.current.setZoom(14);
     } else {
       mapRef.current.fitBounds(bounds, 64);
     }
-  }, [filtered]);
+  }, [groups]);
 
   return (
     <div className="-mx-4 -my-6 h-[calc(100vh-9rem)] relative">

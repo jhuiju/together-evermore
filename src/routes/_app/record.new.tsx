@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { searchPlaces } from "@/lib/places.functions";
 import { notifyPartnerOfNewRecord } from "@/lib/push.functions";
 import { getSignedPhotoUrls } from "@/lib/photos";
+import { compressImage } from "@/lib/image-compress";
 import { clearDataCache } from "@/lib/sw-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -252,11 +253,12 @@ function NewRecordPage() {
           continue;
         }
         if (!p.file) continue;
-        const ext = p.file.name.split(".").pop()?.toLowerCase() || "jpg";
+        const compressed = await compressImage(p.file, { maxEdge: 1200, quality: 0.8 });
+        const ext = compressed.name.split(".").pop()?.toLowerCase() || "jpg";
         const path = `${me.couple_id}/${recId}/${i}-${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("record-photos")
-          .upload(path, p.file, { contentType: p.file.type, upsert: false });
+          .upload(path, compressed, { contentType: compressed.type, upsert: false });
         if (upErr) throw upErr;
         await supabase.from("photos").insert({
           record_id: recId,

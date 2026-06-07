@@ -134,6 +134,32 @@ function DateDetailPage() {
   const [myCoupleId, setMyCoupleId] = useState<string | null>(null);
   const touchStart = useRef<number | null>(null);
 
+  // Photos + signed URLs (full + blur placeholder) cached for 10m.
+  const { data: photoData } = useQuery({
+    queryKey: ["photos", dateId],
+    queryFn: async () => {
+      const { data: ph } = await supabase
+        .from("photos")
+        .select("id, storage_url, order")
+        .eq("record_id", dateId)
+        .order("order");
+      const list = (ph ?? []) as PhotoRow[];
+      if (list.length === 0) return { photos: list, urls: {} as Record<string, string>, blurs: {} as Record<string, string> };
+      const storageUrls = list.map((p) => p.storage_url);
+      const [urls, blurs] = await Promise.all([
+        getSignedPhotoUrls(storageUrls),
+        getSignedPhotoUrls(storageUrls, { width: 32, height: 32, resize: "cover", quality: 30 }),
+      ]);
+      return { photos: list, urls, blurs };
+    },
+    enabled: !!dateId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+  const photos = photoData?.photos ?? [];
+  const photoUrls = photoData?.urls ?? {};
+  const photoBlurs = photoData?.blurs ?? {};
+
   useEffect(() => {
     if (!viewerOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -193,32 +219,6 @@ function DateDetailPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateId]);
-
-  // Photos + signed URLs (full + blur placeholder) cached for 10m.
-  const { data: photoData } = useQuery({
-    queryKey: ["photos", dateId],
-    queryFn: async () => {
-      const { data: ph } = await supabase
-        .from("photos")
-        .select("id, storage_url, order")
-        .eq("record_id", dateId)
-        .order("order");
-      const list = (ph ?? []) as PhotoRow[];
-      if (list.length === 0) return { photos: list, urls: {} as Record<string, string>, blurs: {} as Record<string, string> };
-      const storageUrls = list.map((p) => p.storage_url);
-      const [urls, blurs] = await Promise.all([
-        getSignedPhotoUrls(storageUrls),
-        getSignedPhotoUrls(storageUrls, { width: 32, height: 32, resize: "cover", quality: 30 }),
-      ]);
-      return { photos: list, urls, blurs };
-    },
-    enabled: !!dateId,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
-  const photos = photoData?.photos ?? [];
-  const photoUrls = photoData?.urls ?? {};
-  const photoBlurs = photoData?.blurs ?? {};
 
   // Prefetch the next photo in the carousel so swiping feels instant.
   useEffect(() => {

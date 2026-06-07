@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { searchPlaces } from "@/lib/places.functions";
 import { notifyPartnerOfNewRecord } from "@/lib/push.functions";
 import { getSignedPhotoUrls } from "@/lib/photos";
+import { compressImage } from "@/lib/image-compress";
 import { clearDataCache } from "@/lib/sw-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +49,7 @@ function NewRecordPage() {
   const navigate = useNavigate();
   const placesFn = useServerFn(searchPlaces);
   const notifyFn = useServerFn(notifyPartnerOfNewRecord);
+  const qc = useQueryClient();
 
   const [date, setDate] = useState(dateParam || todayStr());
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -252,11 +255,12 @@ function NewRecordPage() {
           continue;
         }
         if (!p.file) continue;
-        const ext = p.file.name.split(".").pop()?.toLowerCase() || "jpg";
+        const compressed = await compressImage(p.file, { maxEdge: 1200, quality: 0.8 });
+        const ext = compressed.name.split(".").pop()?.toLowerCase() || "jpg";
         const path = `${me.couple_id}/${recId}/${i}-${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("record-photos")
-          .upload(path, p.file, { contentType: p.file.type, upsert: false });
+          .upload(path, compressed, { contentType: compressed.type, upsert: false });
         if (upErr) throw upErr;
         await supabase.from("photos").insert({
           record_id: recId,
@@ -279,6 +283,7 @@ function NewRecordPage() {
 
       toast.success(existingRecordId ? "기록이 업데이트 됐어요 ✓" : "기록 저장 완료 💕");
       clearDataCache();
+      qc.invalidateQueries({ queryKey: ["records"] });
       if (isNewRecord) {
         notifyFn({ data: { recordId: recId } }).catch((e) =>
           console.error("[push] notify failed", e),

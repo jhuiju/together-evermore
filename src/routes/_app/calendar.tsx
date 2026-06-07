@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getSignedPhotoUrls } from "@/lib/photos";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_app/calendar")({
@@ -17,12 +19,61 @@ type DayRecord = {
   partnerScore?: number;
 };
 
+function monthRange(year: number, month: number) {
+  const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  return { start, end };
+}
+
+async function fetchMonthRecords(
+  coupleId: string,
+  myId: string,
+  year: number,
+  month: number,
+): Promise<DayRecord[]> {
+  const { start, end } = monthRange(year, month);
+  // Only fetch lightweight columns the calendar actually renders.
+  const { data: recs } = await supabase
+    .from("records")
+    .select("id, date, photos(storage_url, order), ratings(user_id, score)")
+    .eq("couple_id", coupleId)
+    .gte("date", start)
+    .lte("date", end);
+  const mapped: DayRecord[] = (recs ?? []).map((r: any) => {
+    const sortedPhotos = [...(r.photos ?? [])].sort((a, b) => a.order - b.order);
+    const ratings = r.ratings ?? [];
+    const mine = ratings.find((x: any) => x.user_id === myId)?.score;
+    const partner = ratings.find((x: any) => x.user_id !== myId)?.score;
+    return {
+      id: r.id,
+      date: r.date,
+      thumb: sortedPhotos[0]?.storage_url,
+      myScore: mine,
+      partnerScore: partner,
+    };
+  });
+  const thumbs = mapped.map((m) => m.thumb).filter((t): t is string => !!t);
+  const urlMap = thumbs.length ? await getSignedPhotoUrls(thumbs) : {};
+  return mapped.map((m) => ({ ...m, thumb: m.thumb ? urlMap[m.thumb] : undefined }));
+}
+
+function recordsQueryOptions(coupleId: string, myId: string, year: number, month: number) {
+  return queryOptions({
+    queryKey: ["records", coupleId, year, month] as const,
+    queryFn: () => fetchMonthRecords(coupleId, myId, year, month),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
 function CalendarPage() {
   const [cursor, setCursor] = useState(new Date());
-  const [records, setRecords] = useState<DayRecord[]>([]);
   const [coupleName, setCoupleName] = useState("우리");
   const [anniversary, setAnniversary] = useState<string | null>(null);
   const [myId, setMyId] = useState<string | null>(null);
+  const [coupleId, setCoupleId] = useState<string | null>(null);
+  const qc = useQueryClient();
 
   const { year, month, days, firstDow } = useMemo(() => {
     const y = cursor.getFullYear();
@@ -43,6 +94,7 @@ function CalendarPage() {
       setMyId(user.id);
       const { data: u } = await supabase.from("users").select("couple_id").eq("id", user.id).maybeSingle();
       if (u?.couple_id) {
+        setCoupleId(u.couple_id);
         const { data: c } = await supabase.from("couples").select("couple_name, anniversary").eq("id", u.couple_id).maybeSingle();
         if (c?.couple_name) setCoupleName(c.couple_name);
         if (c?.anniversary) setAnniversary(c.anniversary);
@@ -50,34 +102,24 @@ function CalendarPage() {
     })();
   }, []);
 
+  const enabled = !!myId && !!coupleId;
+  const { data: records = [], isLoading } = useQuery({
+    ...recordsQueryOptions(coupleId ?? "", myId ?? "", year, month),
+    enabled,
+  });
+
+  // Prefetch previous + next month so navigation feels instant.
   useEffect(() => {
-    if (!myId) return;
-    const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-    const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, "0")}`;
-    (async () => {
-      const { data: recs } = await supabase
-        .from("records")
-        .select("id, date, photos(storage_url, order), ratings(user_id, score)")
-        .gte("date", start)
-        .lte("date", end);
-      const mapped: DayRecord[] = (recs ?? []).map((r: any) => {
-        const sortedPhotos = [...(r.photos ?? [])].sort((a, b) => a.order - b.order);
-        const ratings = r.ratings ?? [];
-        const mine = ratings.find((x: any) => x.user_id === myId)?.score;
-        const partner = ratings.find((x: any) => x.user_id !== myId)?.score;
-        return {
-          id: r.id,
-          date: r.date,
-          thumb: sortedPhotos[0]?.storage_url,
-          myScore: mine,
-          partnerScore: partner,
-        };
-      });
-      const thumbs = mapped.map((m) => m.thumb).filter((t): t is string => !!t);
-      const urlMap = await getSignedPhotoUrls(thumbs);
-      setRecords(mapped.map((m) => ({ ...m, thumb: m.thumb ? urlMap[m.thumb] : undefined })));
-    })();
-  }, [year, month, myId]);
+    if (!enabled) return;
+    const prev = new Date(year, month - 1, 1);
+    const next = new Date(year, month + 1, 1);
+    qc.prefetchQuery(
+      recordsQueryOptions(coupleId!, myId!, prev.getFullYear(), prev.getMonth()),
+    );
+    qc.prefetchQuery(
+      recordsQueryOptions(coupleId!, myId!, next.getFullYear(), next.getMonth()),
+    );
+  }, [enabled, coupleId, myId, year, month, qc]);
 
   const recordByDay = useMemo(() => {
     const map = new Map<string, DayRecord>();
@@ -139,7 +181,11 @@ function CalendarPage() {
         {Array.from({ length: firstDow }).map((_, i) => (
           <div key={`b-${i}`} />
         ))}
-        {days.map((d) => {
+        {isLoading && records.length === 0
+          ? days.map((d) => (
+              <Skeleton key={`s-${d}`} className="aspect-[3/4] rounded-lg" />
+            ))
+          : days.map((d) => {
           const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
           const rec = recordByDay.get(dateStr);
           const dow = (firstDow + d - 1) % 7;

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { searchPlaces } from "@/lib/places.functions";
 import { notifyPartnerOfNewRecord } from "@/lib/push.functions";
@@ -48,6 +49,7 @@ function NewRecordPage() {
   const navigate = useNavigate();
   const placesFn = useServerFn(searchPlaces);
   const notifyFn = useServerFn(notifyPartnerOfNewRecord);
+  const qc = useQueryClient();
 
   const [date, setDate] = useState(dateParam || todayStr());
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -281,6 +283,7 @@ function NewRecordPage() {
 
       toast.success(existingRecordId ? "기록이 업데이트 됐어요 ✓" : "기록 저장 완료 💕");
       clearDataCache();
+      qc.invalidateQueries({ queryKey: ["records"] });
       if (isNewRecord) {
         notifyFn({ data: { recordId: recId } }).catch((e) =>
           console.error("[push] notify failed", e),

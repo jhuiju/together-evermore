@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getPhotoPath, getSignedPhotoUrls } from "@/lib/photos";
 import { clearDataCache } from "@/lib/sw-cache";
@@ -122,8 +122,6 @@ function DateDetailPage() {
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<string | null>(null);
   const [record, setRecord] = useState<RecordRow | null>(null);
-  const [photos, setPhotos] = useState<PhotoRow[]>([]);
-  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [ratings, setRatings] = useState<RatingRow[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [carouselIdx, setCarouselIdx] = useState(0);
@@ -182,14 +180,10 @@ function DateDetailPage() {
     }
     setRecord(rec);
 
-    const [{ data: ph }, { data: rt }, { data: us }] = await Promise.all([
-      supabase.from("photos").select("id, storage_url, order").eq("record_id", dateId).order("order"),
+    const [{ data: rt }, { data: us }] = await Promise.all([
       supabase.from("ratings").select("id, user_id, score").eq("record_id", dateId),
       supabase.from("users").select("id, nickname, avatar_url").eq("couple_id", rec.couple_id),
     ]);
-    setPhotos(ph ?? []);
-    const urls = await getSignedPhotoUrls((ph ?? []).map((p) => p.storage_url));
-    setPhotoUrls(urls);
     setRatings(rt ?? []);
     setUsers(us ?? []);
     setLoading(false);
@@ -199,6 +193,42 @@ function DateDetailPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateId]);
+
+  // Photos + signed URLs (full + blur placeholder) cached for 10m.
+  const { data: photoData } = useQuery({
+    queryKey: ["photos", dateId],
+    queryFn: async () => {
+      const { data: ph } = await supabase
+        .from("photos")
+        .select("id, storage_url, order")
+        .eq("record_id", dateId)
+        .order("order");
+      const list = (ph ?? []) as PhotoRow[];
+      if (list.length === 0) return { photos: list, urls: {} as Record<string, string>, blurs: {} as Record<string, string> };
+      const storageUrls = list.map((p) => p.storage_url);
+      const [urls, blurs] = await Promise.all([
+        getSignedPhotoUrls(storageUrls),
+        getSignedPhotoUrls(storageUrls, { width: 32, height: 32, resize: "cover", quality: 30 }),
+      ]);
+      return { photos: list, urls, blurs };
+    },
+    enabled: !!dateId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+  const photos = photoData?.photos ?? [];
+  const photoUrls = photoData?.urls ?? {};
+  const photoBlurs = photoData?.blurs ?? {};
+
+  // Prefetch the next photo in the carousel so swiping feels instant.
+  useEffect(() => {
+    const next = photos[carouselIdx + 1];
+    if (!next) return;
+    const url = photoUrls[next.storage_url];
+    if (!url) return;
+    const img = new Image();
+    img.src = url;
+  }, [carouselIdx, photos, photoUrls]);
 
   const myRating = useMemo(() => ratings.find((r) => r.user_id === me) ?? null, [ratings, me]);
   const partner = useMemo(() => users.find((u) => u.id !== me) ?? null, [users, me]);
@@ -215,6 +245,9 @@ function DateDetailPage() {
 
   function photoUrl(p: PhotoRow) {
     return photoUrls[p.storage_url] ?? "";
+  }
+  function photoBlur(p: PhotoRow) {
+    return photoBlurs[p.storage_url] ?? "";
   }
 
   async function submitRating() {
@@ -254,7 +287,7 @@ function DateDetailPage() {
     if (!record) return;
     // Optimistic navigation: leave the page right away and reconcile in the background.
     setDeleting(true);
-    const snapshot = { record, photos, ratings };
+    const snapshot = { record, photos: [...photos], ratings };
     toast.success("기록이 삭제됐어요");
     navigate({ to: "/calendar" });
     try {
@@ -276,12 +309,12 @@ function DateDetailPage() {
 
       clearDataCache();
       qc.invalidateQueries({ queryKey: ["records"] });
+      qc.invalidateQueries({ queryKey: ["photos", record.id] });
     } catch (e) {
       console.error(e);
       toast.error("삭제 중 오류가 발생했어요. 다시 시도해주세요");
       // Restore local state so the user can retry if they navigate back.
       setRecord(snapshot.record);
-      setPhotos(snapshot.photos);
       setRatings(snapshot.ratings);
     } finally {
       setDeleting(false);
@@ -317,15 +350,39 @@ function DateDetailPage() {
             touchStart.current = null;
           }}
         >
-          {photos.map((p, i) => (
-            <img
-              key={p.id}
-              src={photoUrl(p)}
-              alt={`사진 ${i + 1}`}
-              onClick={() => i === carouselIdx && openViewer(i)}
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${i === carouselIdx ? "opacity-100 cursor-zoom-in" : "opacity-0 pointer-events-none"}`}
-            />
-          ))}
+          {/* Shimmer skeleton matches the aspect ratio while photos are still resolving. */}
+          <div className="absolute inset-0 shimmer" aria-hidden="true" />
+          {photos.map((p, i) => {
+            const active = i === carouselIdx;
+            const blur = photoBlur(p);
+            const url = photoUrl(p);
+            return (
+              <div
+                key={p.id}
+                className={`absolute inset-0 transition-opacity duration-300 ${active ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              >
+                {blur && (
+                  <img
+                    src={blur}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl"
+                  />
+                )}
+                {url && (
+                  <img
+                    src={url}
+                    alt={`사진 ${i + 1}`}
+                    loading={active ? "eager" : "lazy"}
+                    fetchPriority={active ? "high" : "low"}
+                    decoding="async"
+                    onClick={() => active && openViewer(i)}
+                    className={`absolute inset-0 w-full h-full object-cover ${active ? "cursor-zoom-in" : ""}`}
+                  />
+                )}
+              </div>
+            );
+          })}
           {photos.length > 1 && (
             <>
               <button

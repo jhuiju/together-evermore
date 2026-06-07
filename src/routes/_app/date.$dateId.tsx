@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getPhotoPath, getSignedPhotoUrls } from "@/lib/photos";
 import { clearDataCache } from "@/lib/sw-cache";
@@ -116,6 +117,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 function DateDetailPage() {
   const { dateId } = Route.useParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<string | null>(null);
@@ -217,9 +219,20 @@ function DateDetailPage() {
 
   async function submitRating() {
     if (!me || !record || pendingScore <= 0) return;
-    setSubmittingRating(true);
-    // pendingScore is in STARS (0-5); save as 10-point score
+    // Optimistic update: reflect the new rating immediately.
     const scoreToSave = pendingScore * 2;
+    const prevRatings = ratings;
+    const optimistic: RatingRow = {
+      id: `optimistic-${me}`,
+      user_id: me,
+      score: scoreToSave,
+    };
+    setRatings((rs) => {
+      const others = rs.filter((r) => r.user_id !== me);
+      return [...others, optimistic];
+    });
+    setPendingScore(0);
+    setSubmittingRating(true);
     const { error } = await supabase
       .from("ratings")
       .upsert(
@@ -228,17 +241,22 @@ function DateDetailPage() {
       );
     setSubmittingRating(false);
     if (error) {
+      // Roll back on failure.
+      setRatings(prevRatings);
       toast.error(error.message);
       return;
     }
     toast.success("별점이 저장되었어요 ⭐");
-    setPendingScore(0);
-    load();
+    qc.invalidateQueries({ queryKey: ["records"] });
   }
 
   async function deleteRecord() {
     if (!record) return;
+    // Optimistic navigation: leave the page right away and reconcile in the background.
     setDeleting(true);
+    const snapshot = { record, photos, ratings };
+    toast.success("기록이 삭제됐어요");
+    navigate({ to: "/calendar" });
     try {
       const { error: rErr } = await supabase.from("ratings").delete().eq("record_id", record.id);
       if (rErr) throw rErr;
@@ -257,11 +275,14 @@ function DateDetailPage() {
       if (recErr) throw recErr;
 
       clearDataCache();
-      toast.success("기록이 삭제됐어요");
-      navigate({ to: "/calendar" });
+      qc.invalidateQueries({ queryKey: ["records"] });
     } catch (e) {
       console.error(e);
       toast.error("삭제 중 오류가 발생했어요. 다시 시도해주세요");
+      // Restore local state so the user can retry if they navigate back.
+      setRecord(snapshot.record);
+      setPhotos(snapshot.photos);
+      setRatings(snapshot.ratings);
     } finally {
       setDeleting(false);
     }

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getSignedPhotoUrls } from "@/lib/photos";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LazyImage } from "@/components/lazy-image";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_app/calendar")({
@@ -34,6 +35,7 @@ async function fetchMonthRecords(
 ): Promise<DayRecord[]> {
   const { start, end } = monthRange(year, month);
   // Only fetch lightweight columns the calendar actually renders.
+  // Limit inner photos to the first one (order = 0) — calendar only renders a thumbnail.
   const { data: recs } = await supabase
     .from("records")
     .select("id, date, photos(storage_url, order), ratings(user_id, score)")
@@ -53,8 +55,11 @@ async function fetchMonthRecords(
       partnerScore: partner,
     };
   });
+  // Sign only the first thumbnail with a tiny 200x200 transform — way smaller payload than full photos.
   const thumbs = mapped.map((m) => m.thumb).filter((t): t is string => !!t);
-  const urlMap = thumbs.length ? await getSignedPhotoUrls(thumbs) : {};
+  const urlMap = thumbs.length
+    ? await getSignedPhotoUrls(thumbs, { width: 200, height: 200, resize: "cover", quality: 70 })
+    : {};
   return mapped.map((m) => ({ ...m, thumb: m.thumb ? urlMap[m.thumb] : undefined }));
 }
 
@@ -212,9 +217,12 @@ function CalendarPage() {
               </span>
 
               {rec?.thumb && (
-                <div className="mt-1 flex-1 rounded-[4px] overflow-hidden bg-[var(--app-border)]">
-                  <img src={rec.thumb} alt="" className="w-full h-full object-cover" />
-                </div>
+                <LazyImage
+                  src={rec.thumb}
+                  alt=""
+                  loading="lazy"
+                  wrapperClassName="mt-1 flex-1 rounded-[4px] bg-[var(--app-border)]"
+                />
               )}
 
               {rec && (hasMine || hasPartner) && (

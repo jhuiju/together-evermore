@@ -6,7 +6,7 @@ import { getSignedPhotoUrls } from "@/lib/photos";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LazyImage } from "@/components/lazy-image";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_app/calendar")({
   component: CalendarPage,
@@ -146,11 +146,22 @@ function CalendarPage() {
         <p className="text-xs text-[var(--app-muted)]">우리들의 캘린더</p>
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-[var(--app-text)]">{coupleName}</h2>
-          <Link to="/record/new">
-            <Button size="icon" className="rounded-full bg-[var(--app-pink)] hover:bg-[var(--app-pink-hover)] text-white shadow-sm">
-              <Plus className="w-5 h-5" />
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/search">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="rounded-full text-[var(--app-muted)] hover:text-[var(--app-text)] hover:bg-[var(--app-surface)]"
+              >
+                <Search className="w-5 h-5" />
+              </Button>
+            </Link>
+            <Link to="/record/new">
+              <Button size="icon" className="rounded-full bg-[var(--app-pink)] hover:bg-[var(--app-pink-hover)] text-white shadow-sm">
+                <Plus className="w-5 h-5" />
+              </Button>
+            </Link>
+          </div>
         </div>
         {daysTogether != null && (
           <p className="text-xs text-[var(--app-pink)] font-medium">함께한 지 {daysTogether}일째 ♥</p>

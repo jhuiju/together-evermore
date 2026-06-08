@@ -6,7 +6,7 @@ import { getSignedPhotoUrls } from "@/lib/photos";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LazyImage } from "@/components/lazy-image";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_app/calendar")({
   component: CalendarPage,

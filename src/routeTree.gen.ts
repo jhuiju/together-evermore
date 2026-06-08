@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppSearchRouteImport } from './routes/_app/search'
 import { Route as AppMapRouteImport } from './routes/_app/map'
 import { Route as AppConnectRouteImport } from './routes/_app/connect'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
@@ -36,6 +37,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSearchRoute = AppSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMapRoute = AppMapRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof AppCalendarRoute
   '/connect': typeof AppConnectRoute
   '/map': typeof AppMapRoute
+  '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/date/$dateId': typeof AppDateDateIdRoute
   '/record/new': typeof AppRecordNewRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof AppCalendarRoute
   '/connect': typeof AppConnectRoute
   '/map': typeof AppMapRoute
+  '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/date/$dateId': typeof AppDateDateIdRoute
   '/record/new': typeof AppRecordNewRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/_app/calendar': typeof AppCalendarRoute
   '/_app/connect': typeof AppConnectRoute
   '/_app/map': typeof AppMapRoute
+  '/_app/search': typeof AppSearchRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/date/$dateId': typeof AppDateDateIdRoute
   '/_app/record/new': typeof AppRecordNewRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/connect'
     | '/map'
+    | '/search'
     | '/settings'
     | '/date/$dateId'
     | '/record/new'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/connect'
     | '/map'
+    | '/search'
     | '/settings'
     | '/date/$dateId'
     | '/record/new'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
     | '/_app/calendar'
     | '/_app/connect'
     | '/_app/map'
+    | '/_app/search'
     | '/_app/settings'
     | '/_app/date/$dateId'
     | '/_app/record/new'
@@ -164,6 +176,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/search': {
+      id: '/_app/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof AppSearchRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/map': {
@@ -208,6 +227,7 @@ interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppConnectRoute: typeof AppConnectRoute
   AppMapRoute: typeof AppMapRoute
+  AppSearchRoute: typeof AppSearchRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppDateDateIdRoute: typeof AppDateDateIdRoute
   AppRecordNewRoute: typeof AppRecordNewRoute
@@ -217,6 +237,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
   AppConnectRoute: AppConnectRoute,
   AppMapRoute: AppMapRoute,
+  AppSearchRoute: AppSearchRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppDateDateIdRoute: AppDateDateIdRoute,
   AppRecordNewRoute: AppRecordNewRoute,
@@ -232,3 +253,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

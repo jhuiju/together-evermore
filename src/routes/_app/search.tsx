@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { getSignedPhotoUrls } from "@/lib/photos";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LazyImage } from "@/components/lazy-image";
-import { ChevronLeft, Search, X } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { ChevronLeft, Search, SlidersHorizontal, X } from "lucide-react";
 
 export const Route = createFileRoute("/_app/search")({
   component: SearchPage,
@@ -35,17 +36,34 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+type FetchOpts = {
+  q: string;
+  tag: string; // "전체" or specific
+  startDate: string; // yyyy-mm-dd or ""
+  endDate: string;
+};
+
 async function searchRecords(
   coupleId: string,
   myId: string,
-  q: string,
+  opts: FetchOpts,
 ): Promise<SearchResult[]> {
-  const pattern = `%${q}%`;
-  const { data: recs } = await supabase
+  let query = supabase
     .from("records")
-    .select("id, date, location_name, tag, photos(storage_url, order), ratings(user_id, score)")
-    .eq("couple_id", coupleId)
-    .or(`location_name.ilike.${pattern},memo.ilike.${pattern}`);
+    .select("id, date, location_name, tag, memo, photos(storage_url, order), ratings(user_id, score)")
+    .eq("couple_id", coupleId);
+
+  if (opts.q.trim()) {
+    const pattern = `%${opts.q.trim()}%`;
+    query = query.or(`location_name.ilike.${pattern},memo.ilike.${pattern}`);
+  }
+  if (opts.tag && opts.tag !== "전체") {
+    query = query.eq("tag", opts.tag);
+  }
+  if (opts.startDate) query = query.gte("date", opts.startDate);
+  if (opts.endDate) query = query.lte("date", opts.endDate);
+
+  const { data: recs } = await query.order("date", { ascending: false });
 
   const mapped: SearchResult[] = (recs ?? []).map((r: any) => {
     const sortedPhotos = [...(r.photos ?? [])].sort((a: any, b: any) => a.order - b.order);
@@ -74,6 +92,16 @@ async function searchRecords(
   }));
 }
 
+const TAGS = ["전체", "데이트", "여행", "일상", "특별한 날"] as const;
+type RatingTarget = "mine" | "partner" | "avg";
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+function fmt(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
 function SearchPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -81,6 +109,14 @@ function SearchPage() {
   const [coupleId, setCoupleId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 300);
+
+  // Filters
+  const [showFilters, setShowFilters] = useState(true);
+  const [tag, setTag] = useState<string>("전체");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [ratingTarget, setRatingTarget] = useState<RatingTarget>("mine");
+  const [ratingRange, setRatingRange] = useState<[number, number]>([0, 10]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -101,21 +137,86 @@ function SearchPage() {
   }, []);
 
   const hasQuery = debouncedQuery.trim().length > 0;
-  const enabled = !!myId && !!coupleId && hasQuery;
 
-  const { data: results = [], isLoading } = useQuery({
-    queryKey: ["search", coupleId ?? "", debouncedQuery],
-    queryFn: () => searchRecords(coupleId!, myId!, debouncedQuery),
+  const tagActive = tag !== "전체";
+  const dateActive = !!startDate || !!endDate;
+  const ratingActive = ratingRange[0] !== 0 || ratingRange[1] !== 10;
+  const activeFilterCount =
+    (tagActive ? 1 : 0) + (dateActive ? 1 : 0) + (ratingActive ? 1 : 0);
+  const anyFilterActive = activeFilterCount > 0;
+
+  const enabled = !!myId && !!coupleId && (hasQuery || anyFilterActive);
+
+  const { data: rawResults = [], isLoading } = useQuery({
+    queryKey: ["search", coupleId ?? "", debouncedQuery, tag, startDate, endDate],
+    queryFn: () =>
+      searchRecords(coupleId!, myId!, {
+        q: debouncedQuery,
+        tag,
+        startDate,
+        endDate,
+      }),
     enabled,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
 
-  const resultCount = results.length;
+  // Rating filter (client side)
+  const results = useMemo(() => {
+    if (!ratingActive) return rawResults;
+    const [mn, mx] = ratingRange;
+    return rawResults.filter((r) => {
+      let v: number | undefined;
+      if (ratingTarget === "mine") v = r.myScore;
+      else if (ratingTarget === "partner") v = r.partnerScore;
+      else {
+        const vals = [r.myScore, r.partnerScore].filter(
+          (x): x is number => typeof x === "number",
+        );
+        v = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : undefined;
+      }
+      if (v == null) return false;
+      return v >= mn && v <= mx;
+    });
+  }, [rawResults, ratingActive, ratingRange, ratingTarget]);
 
-  const showEmptyBefore = !hasQuery && !isLoading;
-  const showNoResults = hasQuery && !isLoading && resultCount === 0;
-  const showResults = hasQuery && !isLoading && resultCount > 0;
+  const resultCount = results.length;
+  const hasSearchInput = hasQuery || anyFilterActive;
+
+  const showEmptyBefore = !hasSearchInput && !isLoading;
+  const showNoResults = hasSearchInput && !isLoading && resultCount === 0;
+  const showResults = hasSearchInput && !isLoading && resultCount > 0;
+
+  const resetFilters = () => {
+    setTag("전체");
+    setStartDate("");
+    setEndDate("");
+    setRatingTarget("mine");
+    setRatingRange([0, 10]);
+  };
+
+  const applyPreset = (preset: "month" | "3months" | "year" | "all") => {
+    const now = new Date();
+    if (preset === "all") {
+      setStartDate("");
+      setEndDate("");
+      return;
+    }
+    if (preset === "month") {
+      const s = new Date(now.getFullYear(), now.getMonth(), 1);
+      setStartDate(fmt(s));
+      setEndDate(todayStr());
+    } else if (preset === "3months") {
+      const s = new Date(now);
+      s.setMonth(s.getMonth() - 3);
+      setStartDate(fmt(s));
+      setEndDate(todayStr());
+    } else if (preset === "year") {
+      const s = new Date(now.getFullYear(), 0, 1);
+      setStartDate(fmt(s));
+      setEndDate(todayStr());
+    }
+  };
 
   return (
     <div className="space-y-4 bg-[var(--app-bg)] text-[var(--app-text)] min-h-[calc(100vh-120px)]">
@@ -156,13 +257,152 @@ function SearchPage() {
         )}
       </div>
 
+      {/* Filter header */}
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setShowFilters((v) => !v)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--app-text)]"
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+          필터
+          {anyFilterActive && (
+            <span className="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-[#D4537E] text-white text-[10px] font-semibold">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+        {anyFilterActive && (
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="text-xs text-[var(--app-muted)] hover:text-[var(--app-pink)] underline-offset-2 hover:underline"
+          >
+            필터 초기화
+          </button>
+        )}
+      </div>
+
+      {showFilters && (
+        <div className="space-y-4 p-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)]">
+          {/* Tag chips */}
+          <div>
+            <p className="text-xs font-medium text-[var(--app-muted)] mb-2">태그</p>
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+              {TAGS.map((t) => {
+                const selected = tag === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTag(t)}
+                    className={
+                      "shrink-0 px-3 h-8 rounded-full text-xs font-medium border transition-colors " +
+                      (selected
+                        ? "bg-[#D4537E] text-white border-[#D4537E]"
+                        : "bg-transparent text-[var(--app-text)] border-[var(--app-border)] hover:border-[#D4537E]")
+                    }
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Date range */}
+          <div>
+            <p className="text-xs font-medium text-[var(--app-muted)] mb-2">날짜 범위</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="flex-1 h-9 px-2 rounded-lg border border-[var(--app-border)] bg-[var(--app-bg)] text-xs text-[var(--app-text)]"
+                aria-label="시작일"
+              />
+              <span className="text-xs text-[var(--app-muted)]">~</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="flex-1 h-9 px-2 rounded-lg border border-[var(--app-border)] bg-[var(--app-bg)] text-xs text-[var(--app-text)]"
+                aria-label="종료일"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {[
+                { k: "month" as const, label: "이번 달" },
+                { k: "3months" as const, label: "최근 3개월" },
+                { k: "year" as const, label: "올해" },
+                { k: "all" as const, label: "전체" },
+              ].map((p) => (
+                <button
+                  key={p.k}
+                  type="button"
+                  onClick={() => applyPreset(p.k)}
+                  className="px-2.5 h-7 rounded-full text-[11px] border border-[var(--app-border)] text-[var(--app-muted)] hover:border-[#D4537E] hover:text-[var(--app-text)]"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Rating */}
+          <div>
+            <p className="text-xs font-medium text-[var(--app-muted)] mb-2">별점</p>
+            <div className="flex gap-1 mb-3 p-0.5 rounded-lg bg-[var(--app-bg)] border border-[var(--app-border)]">
+              {([
+                { v: "mine", label: "내 별점" },
+                { v: "partner", label: "파트너 별점" },
+                { v: "avg", label: "평균 별점" },
+              ] as { v: RatingTarget; label: string }[]).map((o) => {
+                const selected = ratingTarget === o.v;
+                return (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => setRatingTarget(o.v)}
+                    className={
+                      "flex-1 h-7 rounded-md text-[11px] font-medium transition-colors " +
+                      (selected
+                        ? "bg-[#D4537E] text-white"
+                        : "text-[var(--app-muted)] hover:text-[var(--app-text)]")
+                    }
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-[var(--app-muted)] w-6 text-center">
+                {ratingRange[0]}
+              </span>
+              <Slider
+                value={ratingRange}
+                min={0}
+                max={10}
+                step={1}
+                onValueChange={(v) => setRatingRange([v[0], v[1]] as [number, number])}
+                className="flex-1"
+              />
+              <span className="text-[11px] text-[var(--app-muted)] w-6 text-center">
+                {ratingRange[1]}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Result count */}
       {showResults && (
         <p className="text-xs text-[var(--app-muted)]">총 {resultCount}개의 기록</p>
       )}
 
       {/* Results list */}
-      {isLoading && hasQuery ? (
+      {isLoading && hasSearchInput ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <div

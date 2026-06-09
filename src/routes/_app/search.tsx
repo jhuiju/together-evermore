@@ -6,7 +6,15 @@ import { getSignedPhotoUrls } from "@/lib/photos";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LazyImage } from "@/components/lazy-image";
 import { Slider } from "@/components/ui/slider";
-import { ChevronLeft, Search, SlidersHorizontal, X } from "lucide-react";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { ArrowUpDown, Check, ChevronLeft, Search, SlidersHorizontal, X } from "lucide-react";
+
 
 export const Route = createFileRoute("/_app/search")({
   component: SearchPage,
@@ -94,6 +102,14 @@ async function searchRecords(
 
 const TAGS = ["전체", "데이트", "여행", "일상", "특별한 날"] as const;
 type RatingTarget = "mine" | "partner" | "avg";
+type SortOption = "newest" | "oldest" | "ratingHigh" | "ratingLow";
+
+const SORT_LABELS: Record<SortOption, string> = {
+  newest: "최신순",
+  oldest: "오래된순",
+  ratingHigh: "별점 높은순",
+  ratingLow: "별점 낮은순",
+};
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -117,6 +133,8 @@ function SearchPage() {
   const [endDate, setEndDate] = useState<string>("");
   const [ratingTarget, setRatingTarget] = useState<RatingTarget>("mine");
   const [ratingRange, setRatingRange] = useState<[number, number]>([0, 10]);
+  const [sortOption, setSortOption] = useState<SortOption>("newest");
+  const [sortOpen, setSortOpen] = useState(false);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -148,7 +166,7 @@ function SearchPage() {
   const enabled = !!myId && !!coupleId && (hasQuery || anyFilterActive);
 
   const { data: rawResults = [], isLoading } = useQuery({
-    queryKey: ["search", coupleId ?? "", debouncedQuery, tag, startDate, endDate],
+    queryKey: ["search", coupleId ?? "", debouncedQuery, tag, startDate, endDate, sortOption],
     queryFn: () =>
       searchRecords(coupleId!, myId!, {
         q: debouncedQuery,
@@ -161,24 +179,41 @@ function SearchPage() {
     gcTime: 5 * 60 * 1000,
   });
 
-  // Rating filter (client side)
+  // Rating filter (client side) + sort
   const results = useMemo(() => {
-    if (!ratingActive) return rawResults;
-    const [mn, mx] = ratingRange;
-    return rawResults.filter((r) => {
-      let v: number | undefined;
-      if (ratingTarget === "mine") v = r.myScore;
-      else if (ratingTarget === "partner") v = r.partnerScore;
-      else {
-        const vals = [r.myScore, r.partnerScore].filter(
-          (x): x is number => typeof x === "number",
-        );
-        v = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : undefined;
-      }
-      if (v == null) return false;
-      return v >= mn && v <= mx;
-    });
-  }, [rawResults, ratingActive, ratingRange, ratingTarget]);
+    let list = rawResults;
+    if (ratingActive) {
+      const [mn, mx] = ratingRange;
+      list = list.filter((r) => {
+        let v: number | undefined;
+        if (ratingTarget === "mine") v = r.myScore;
+        else if (ratingTarget === "partner") v = r.partnerScore;
+        else {
+          const vals = [r.myScore, r.partnerScore].filter(
+            (x): x is number => typeof x === "number",
+          );
+          v = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : undefined;
+        }
+        if (v == null) return false;
+        return v >= mn && v <= mx;
+      });
+    }
+    const sorted = [...list];
+    if (sortOption === "newest") {
+      sorted.sort((a, b) => b.date.localeCompare(a.date));
+    } else if (sortOption === "oldest") {
+      sorted.sort((a, b) => a.date.localeCompare(b.date));
+    } else if (sortOption === "ratingHigh" || sortOption === "ratingLow") {
+      sorted.sort((a, b) => {
+        const valsA = [a.myScore, a.partnerScore].filter((x): x is number => typeof x === "number");
+        const valsB = [b.myScore, b.partnerScore].filter((x): x is number => typeof x === "number");
+        const avgA = valsA.length ? valsA.reduce((s, v) => s + v, 0) / valsA.length : -1;
+        const avgB = valsB.length ? valsB.reduce((s, v) => s + v, 0) / valsB.length : -1;
+        return sortOption === "ratingHigh" ? avgB - avgA : avgA - avgB;
+      });
+    }
+    return sorted;
+  }, [rawResults, ratingActive, ratingRange, ratingTarget, sortOption]);
 
   const resultCount = results.length;
   const hasSearchInput = hasQuery || anyFilterActive;
@@ -396,9 +431,18 @@ function SearchPage() {
         </div>
       )}
 
-      {/* Result count */}
+      {/* Result count + sort */}
       {showResults && (
-        <p className="text-xs text-[var(--app-muted)]">총 {resultCount}개의 기록</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-[var(--app-muted)]">총 {resultCount}개의 기록</p>
+          <button
+            type="button"
+            onClick={() => setSortOpen(true)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--app-text)]"
+          >
+            {SORT_LABELS[sortOption]} <ArrowUpDown className="w-3.5 h-3.5 text-[var(--app-muted)]" />
+          </button>
+        </div>
       )}
 
       {/* Results list */}
@@ -485,6 +529,37 @@ function SearchPage() {
           ))}
         </div>
       )}
+
+      {/* Sort bottom sheet */}
+      <Drawer open={sortOpen} onOpenChange={setSortOpen}>
+        <DrawerContent className="bg-[var(--app-surface)] border-t border-[var(--app-border)]">
+          <DrawerHeader className="text-left pb-2">
+            <DrawerTitle className="text-base font-bold text-[var(--app-text)]">정렬</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-6 space-y-1">
+            {(["newest", "oldest", "ratingHigh", "ratingLow"] as SortOption[]).map((opt) => {
+              const selected = sortOption === opt;
+              return (
+                <DrawerClose asChild key={opt}>
+                  <button
+                    type="button"
+                    onClick={() => setSortOption(opt)}
+                    className={
+                      "w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors " +
+                      (selected
+                        ? "bg-[var(--app-pink-badge-bg)] text-[var(--app-pink)]"
+                        : "text-[var(--app-text)] hover:bg-[var(--app-bg)]")
+                    }
+                  >
+                    <span>{SORT_LABELS[opt]}</span>
+                    {selected && <Check className="w-4 h-4" />}
+                  </button>
+                </DrawerClose>
+              );
+            })}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

@@ -133,6 +133,8 @@ function SearchPage() {
   const [endDate, setEndDate] = useState<string>("");
   const [ratingTarget, setRatingTarget] = useState<RatingTarget>("mine");
   const [ratingRange, setRatingRange] = useState<[number, number]>([0, 10]);
+  const [sortOption, setSortOption] = useState<SortOption>("newest");
+  const [sortOpen, setSortOpen] = useState(false);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -164,7 +166,7 @@ function SearchPage() {
   const enabled = !!myId && !!coupleId && (hasQuery || anyFilterActive);
 
   const { data: rawResults = [], isLoading } = useQuery({
-    queryKey: ["search", coupleId ?? "", debouncedQuery, tag, startDate, endDate],
+    queryKey: ["search", coupleId ?? "", debouncedQuery, tag, startDate, endDate, sortOption],
     queryFn: () =>
       searchRecords(coupleId!, myId!, {
         q: debouncedQuery,
@@ -177,24 +179,41 @@ function SearchPage() {
     gcTime: 5 * 60 * 1000,
   });
 
-  // Rating filter (client side)
+  // Rating filter (client side) + sort
   const results = useMemo(() => {
-    if (!ratingActive) return rawResults;
-    const [mn, mx] = ratingRange;
-    return rawResults.filter((r) => {
-      let v: number | undefined;
-      if (ratingTarget === "mine") v = r.myScore;
-      else if (ratingTarget === "partner") v = r.partnerScore;
-      else {
-        const vals = [r.myScore, r.partnerScore].filter(
-          (x): x is number => typeof x === "number",
-        );
-        v = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : undefined;
-      }
-      if (v == null) return false;
-      return v >= mn && v <= mx;
-    });
-  }, [rawResults, ratingActive, ratingRange, ratingTarget]);
+    let list = rawResults;
+    if (ratingActive) {
+      const [mn, mx] = ratingRange;
+      list = list.filter((r) => {
+        let v: number | undefined;
+        if (ratingTarget === "mine") v = r.myScore;
+        else if (ratingTarget === "partner") v = r.partnerScore;
+        else {
+          const vals = [r.myScore, r.partnerScore].filter(
+            (x): x is number => typeof x === "number",
+          );
+          v = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : undefined;
+        }
+        if (v == null) return false;
+        return v >= mn && v <= mx;
+      });
+    }
+    const sorted = [...list];
+    if (sortOption === "newest") {
+      sorted.sort((a, b) => b.date.localeCompare(a.date));
+    } else if (sortOption === "oldest") {
+      sorted.sort((a, b) => a.date.localeCompare(b.date));
+    } else if (sortOption === "ratingHigh" || sortOption === "ratingLow") {
+      sorted.sort((a, b) => {
+        const valsA = [a.myScore, a.partnerScore].filter((x): x is number => typeof x === "number");
+        const valsB = [b.myScore, b.partnerScore].filter((x): x is number => typeof x === "number");
+        const avgA = valsA.length ? valsA.reduce((s, v) => s + v, 0) / valsA.length : -1;
+        const avgB = valsB.length ? valsB.reduce((s, v) => s + v, 0) / valsB.length : -1;
+        return sortOption === "ratingHigh" ? avgB - avgA : avgA - avgB;
+      });
+    }
+    return sorted;
+  }, [rawResults, ratingActive, ratingRange, ratingTarget, sortOption]);
 
   const resultCount = results.length;
   const hasSearchInput = hasQuery || anyFilterActive;

@@ -6,7 +6,15 @@ import { getSignedPhotoUrls } from "@/lib/photos";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LazyImage } from "@/components/lazy-image";
 import { Slider } from "@/components/ui/slider";
-import { ChevronLeft, Search, SlidersHorizontal, X } from "lucide-react";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { ArrowUpDown, Check, ChevronLeft, Search, SlidersHorizontal, X } from "lucide-react";
+
 
 export const Route = createFileRoute("/_app/search")({
   component: SearchPage,

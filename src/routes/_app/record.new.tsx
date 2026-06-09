@@ -472,8 +472,9 @@ function NewRecordPage() {
 
       {/* Memo */}
       <div className="space-y-2">
-        <Label className="text-sm">메모 <span className="text-xs text-muted-foreground">(선택)</span></Label>
+        <Label className="text-sm">나의 메모 <span className="text-xs text-muted-foreground">(선택)</span></Label>
         <Textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={4} placeholder="오늘의 이야기를 남겨보세요…" />
+        <p className="text-[11px] text-muted-foreground">이 메모는 나만 작성/수정할 수 있어요. 파트너는 자신의 메모를 따로 작성해요.</p>
       </div>
 
       {/* Rating */}

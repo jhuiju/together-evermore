@@ -7,9 +7,10 @@ import { clearDataCache } from "@/lib/sw-cache";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Loader2, MapPin, Pencil, Star, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Loader2, MapPin, Pencil, Star, Trash2 } from "lucide-react";
 import { X } from "lucide-react";
 import {
   AlertDialog,
@@ -40,6 +41,7 @@ type RecordRow = {
 };
 type PhotoRow = { id: string; storage_url: string; order: number };
 type RatingRow = { id: string; user_id: string; score: number };
+type MemoRow = { id: string; user_id: string; content: string };
 type UserRow = { id: string; nickname: string | null; avatar_url: string | null };
 
 const BROWSER_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
@@ -134,6 +136,11 @@ function DateDetailPage() {
   const [myCoupleId, setMyCoupleId] = useState<string | null>(null);
   const touchStart = useRef<number | null>(null);
 
+  // Memo edit state (inline)
+  const [editingMemo, setEditingMemo] = useState(false);
+  const [memoDraft, setMemoDraft] = useState("");
+  const [savingMemo, setSavingMemo] = useState(false);
+
   // Photos + signed URLs (full + blur placeholder) cached for 10m.
   const { data: photoData } = useQuery({
     queryKey: ["photos", dateId],
@@ -159,6 +166,21 @@ function DateDetailPage() {
   const photos = photoData?.photos ?? [];
   const photoUrls = photoData?.urls ?? {};
   const photoBlurs = photoData?.blurs ?? {};
+
+  // Per-user memos for this record
+  const { data: memos = [] } = useQuery<MemoRow[]>({
+    queryKey: ["memos", dateId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("memos")
+        .select("id, user_id, content")
+        .eq("record_id", dateId);
+      return (data ?? []) as MemoRow[];
+    },
+    enabled: !!dateId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
   useEffect(() => {
     if (!viewerOpen) return;
@@ -238,6 +260,14 @@ function DateDetailPage() {
     () => (partner ? ratings.find((r) => r.user_id === partner.id) ?? null : null),
     [ratings, partner],
   );
+  const myMemo = useMemo(
+    () => (me ? memos.find((m) => m.user_id === me)?.content ?? "" : ""),
+    [memos, me],
+  );
+  const partnerMemo = useMemo(
+    () => (partner ? memos.find((m) => m.user_id === partner.id)?.content ?? "" : ""),
+    [memos, partner],
+  );
   const average = useMemo(() => {
     if (!myRating || !partnerRating) return null;
     return (myRating.score + partnerRating.score) / 2;
@@ -281,6 +311,38 @@ function DateDetailPage() {
     }
     toast.success("별점이 저장되었어요 ⭐");
     qc.invalidateQueries({ queryKey: ["records"] });
+  }
+
+  async function saveMemo() {
+    if (!me || !record) return;
+    setSavingMemo(true);
+    const trimmed = memoDraft.trim();
+    try {
+      if (trimmed.length === 0) {
+        const { error } = await supabase
+          .from("memos")
+          .delete()
+          .eq("record_id", record.id)
+          .eq("user_id", me);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("memos")
+          .upsert(
+            { record_id: record.id, user_id: me, content: trimmed },
+            { onConflict: "record_id,user_id" },
+          );
+        if (error) throw error;
+      }
+      toast.success("메모가 저장되었어요 ✓");
+      setEditingMemo(false);
+      qc.invalidateQueries({ queryKey: ["memos", record.id] });
+      qc.invalidateQueries({ queryKey: ["record", record.id] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "메모 저장 실패");
+    } finally {
+      setSavingMemo(false);
+    }
   }
 
   async function deleteRecord() {
@@ -465,9 +527,74 @@ function DateDetailPage() {
             {record.tag}
           </Badge>
         )}
-        {record.memo && (
-          <Card className="p-4 whitespace-pre-wrap leading-relaxed text-sm">{record.memo}</Card>
-        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* My memo */}
+          <Card className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-primary">나의 메모</span>
+              {!editingMemo && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMemoDraft(myMemo);
+                    setEditingMemo(true);
+                  }}
+                  className="p-1 rounded-md text-primary hover:bg-primary/10"
+                  aria-label="메모 편집"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            {editingMemo ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={memoDraft}
+                  onChange={(e) => setMemoDraft(e.target.value)}
+                  rows={4}
+                  placeholder="오늘의 이야기를 남겨보세요…"
+                  className="text-sm"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingMemo(false)}
+                    disabled={savingMemo}
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={saveMemo}
+                    disabled={savingMemo}
+                    className="bg-gradient-to-r from-primary to-accent text-primary-foreground"
+                  >
+                    {savingMemo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Check className="w-3.5 h-3.5 mr-1" />저장</>}
+                  </Button>
+                </div>
+              </div>
+            ) : myMemo ? (
+              <p className="whitespace-pre-wrap leading-relaxed text-sm">{myMemo}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">아직 메모가 없어요</p>
+            )}
+          </Card>
+
+          {/* Partner memo (read-only) */}
+          <Card className="p-4 bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-accent-foreground/80">파트너 메모</span>
+            </div>
+            {partnerMemo ? (
+              <p className="whitespace-pre-wrap leading-relaxed text-sm">{partnerMemo}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">아직 메모가 없어요</p>
+            )}
+          </Card>
+        </div>
       </div>
 
       {/* Edit (both partners) */}

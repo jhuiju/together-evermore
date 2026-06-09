@@ -90,21 +90,21 @@ function NewRecordPage() {
         if (!me?.couple_id) return;
         const { data: rec } = await supabase
           .from("records")
-          .select("id, memo, tag, location_name, lat, lng")
+          .select("id, tag, location_name, lat, lng")
           .eq("couple_id", me.couple_id)
           .eq("date", date)
           .maybeSingle();
         if (cancelled || !rec) return;
         setExistingRecordId(rec.id);
-        setMemo(rec.memo ?? "");
         if (rec.tag && (TAGS as readonly string[]).includes(rec.tag)) setTag(rec.tag as Tag);
         if (rec.location_name && rec.lat != null && rec.lng != null) {
           setPlace({ id: "existing", name: rec.location_name, address: "", lat: rec.lat, lng: rec.lng });
           setQuery(rec.location_name);
         }
-        const [{ data: ph }, { data: rt }] = await Promise.all([
+        const [{ data: ph }, { data: rt }, { data: mm }] = await Promise.all([
           supabase.from("photos").select("id, storage_url, order").eq("record_id", rec.id).order("order"),
           supabase.from("ratings").select("score").eq("record_id", rec.id).eq("user_id", user.id).maybeSingle(),
+          supabase.from("memos").select("content").eq("record_id", rec.id).eq("user_id", user.id).maybeSingle(),
         ]);
         if (cancelled) return;
         const rows = ph ?? [];
@@ -117,6 +117,9 @@ function NewRecordPage() {
         })));
         if (rt && typeof (rt as any).score === "number") {
           setScore((rt as any).score / 2);
+        }
+        if (mm && typeof (mm as any).content === "string") {
+          setMemo((mm as any).content);
         }
       } finally {
         if (!cancelled) setLoadingExisting(false);
@@ -187,7 +190,6 @@ function NewRecordPage() {
 
       const updatableFields = {
         date,
-        memo: memo || null,
         tag,
         location_name: place?.name ?? null,
         lat: place?.lat ?? null,
@@ -281,9 +283,33 @@ function NewRecordPage() {
         if (rateErr) throw rateErr;
       }
 
+      // Personal memo: upsert on (record_id, user_id) so each partner
+      // keeps their own memo independently.
+      {
+        const trimmed = memo.trim();
+        if (trimmed.length > 0) {
+          const { error: memoErr } = await supabase
+            .from("memos")
+            .upsert(
+              { record_id: recId, user_id: user.id, content: trimmed },
+              { onConflict: "record_id,user_id" },
+            );
+          if (memoErr) throw memoErr;
+        } else {
+          // Empty memo deletes my prior memo (if any).
+          await supabase
+            .from("memos")
+            .delete()
+            .eq("record_id", recId)
+            .eq("user_id", user.id);
+        }
+      }
+
       toast.success(existingRecordId ? "기록이 업데이트 됐어요 ✓" : "기록 저장 완료 💕");
       clearDataCache();
       qc.invalidateQueries({ queryKey: ["records"] });
+      qc.invalidateQueries({ queryKey: ["memos", recId] });
+      qc.invalidateQueries({ queryKey: ["record", recId] });
       if (isNewRecord) {
         notifyFn({ data: { recordId: recId } }).catch((e) =>
           console.error("[push] notify failed", e),
@@ -446,8 +472,9 @@ function NewRecordPage() {
 
       {/* Memo */}
       <div className="space-y-2">
-        <Label className="text-sm">메모 <span className="text-xs text-muted-foreground">(선택)</span></Label>
+        <Label className="text-sm">나의 메모 <span className="text-xs text-muted-foreground">(선택)</span></Label>
         <Textarea value={memo} onChange={(e) => setMemo(e.target.value)} rows={4} placeholder="오늘의 이야기를 남겨보세요…" />
+        <p className="text-[11px] text-muted-foreground">이 메모는 나만 작성/수정할 수 있어요. 파트너는 자신의 메모를 따로 작성해요.</p>
       </div>
 
       {/* Rating */}

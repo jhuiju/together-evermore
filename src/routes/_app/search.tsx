@@ -56,14 +56,30 @@ async function searchRecords(
   myId: string,
   opts: FetchOpts,
 ): Promise<SearchResult[]> {
+  // If there is a text query, also gather record_ids whose current-user memo matches.
+  let memoMatchedIds: string[] = [];
+  if (opts.q.trim()) {
+    const pattern = `%${opts.q.trim()}%`;
+    const { data: mm } = await supabase
+      .from("memos")
+      .select("record_id")
+      .eq("user_id", myId)
+      .ilike("content", pattern);
+    memoMatchedIds = (mm ?? []).map((m: any) => m.record_id);
+  }
+
   let query = supabase
     .from("records")
-    .select("id, date, location_name, tag, memo, photos(storage_url, order), ratings(user_id, score)")
+    .select("id, date, location_name, tag, photos(storage_url, order), ratings(user_id, score)")
     .eq("couple_id", coupleId);
 
   if (opts.q.trim()) {
     const pattern = `%${opts.q.trim()}%`;
-    query = query.or(`location_name.ilike.${pattern},memo.ilike.${pattern}`);
+    const orParts = [`location_name.ilike.${pattern}`];
+    if (memoMatchedIds.length > 0) {
+      orParts.push(`id.in.(${memoMatchedIds.join(",")})`);
+    }
+    query = query.or(orParts.join(","));
   }
   if (opts.tag && opts.tag !== "전체") {
     query = query.eq("tag", opts.tag);

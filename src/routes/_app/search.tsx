@@ -431,9 +431,18 @@ function SearchPage() {
         </div>
       )}
 
-      {/* Result count */}
+      {/* Result count + sort */}
       {showResults && (
-        <p className="text-xs text-[var(--app-muted)]">총 {resultCount}개의 기록</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-[var(--app-muted)]">총 {resultCount}개의 기록</p>
+          <button
+            type="button"
+            onClick={() => setSortOpen(true)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--app-text)]"
+          >
+            {SORT_LABELS[sortOption]} <ArrowUpDown className="w-3.5 h-3.5 text-[var(--app-muted)]" />
+          </button>
+        </div>
       )}
 
       {/* Results list */}

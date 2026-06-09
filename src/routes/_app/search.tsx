@@ -529,6 +529,37 @@ function SearchPage() {
           ))}
         </div>
       )}
+
+      {/* Sort bottom sheet */}
+      <Drawer open={sortOpen} onOpenChange={setSortOpen}>
+        <DrawerContent className="bg-[var(--app-surface)] border-t border-[var(--app-border)]">
+          <DrawerHeader className="text-left pb-2">
+            <DrawerTitle className="text-base font-bold text-[var(--app-text)]">정렬</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-6 space-y-1">
+            {(["newest", "oldest", "ratingHigh", "ratingLow"] as SortOption[]).map((opt) => {
+              const selected = sortOption === opt;
+              return (
+                <DrawerClose asChild key={opt}>
+                  <button
+                    type="button"
+                    onClick={() => setSortOption(opt)}
+                    className={
+                      "w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors " +
+                      (selected
+                        ? "bg-[var(--app-pink-badge-bg)] text-[var(--app-pink)]"
+                        : "text-[var(--app-text)] hover:bg-[var(--app-bg)]")
+                    }
+                  >
+                    <span>{SORT_LABELS[opt]}</span>
+                    {selected && <Check className="w-4 h-4" />}
+                  </button>
+                </DrawerClose>
+              );
+            })}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

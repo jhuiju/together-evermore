@@ -102,6 +102,14 @@ async function searchRecords(
 
 const TAGS = ["전체", "데이트", "여행", "일상", "특별한 날"] as const;
 type RatingTarget = "mine" | "partner" | "avg";
+type SortOption = "newest" | "oldest" | "ratingHigh" | "ratingLow";
+
+const SORT_LABELS: Record<SortOption, string> = {
+  newest: "최신순",
+  oldest: "오래된순",
+  ratingHigh: "별점 높은순",
+  ratingLow: "별점 낮은순",
+};
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);

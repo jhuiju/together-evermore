@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { searchPlaces } from "@/lib/places.functions";
 import { notifyPartnerOfNewRecord } from "@/lib/push.functions";
 import { getSignedPhotoUrls } from "@/lib/photos";
 import { compressImage } from "@/lib/image-compress";
@@ -18,7 +17,8 @@ import {
   ImagePlus,
   Loader2,
   MapPin,
-  Search,
+  Pencil,
+  Check,
   Star,
   X,
 } from "lucide-react";
@@ -31,7 +31,14 @@ export const Route = createFileRoute("/_app/record/new")({
 const TAGS = ["데이트", "여행", "일상", "특별한날"] as const;
 type Tag = (typeof TAGS)[number];
 
-type Place = { id: string; name: string; address: string; lat: number; lng: number };
+type Place = {
+  id: string;
+  name: string;
+  address: string;
+  category?: string;
+  lat: number | null;
+  lng: number | null;
+};
 type Photo = {
   preview: string;
   file?: File;        // present for newly added photos
@@ -47,7 +54,6 @@ function todayStr() {
 function NewRecordPage() {
   const { date: dateParam } = Route.useSearch();
   const navigate = useNavigate();
-  const placesFn = useServerFn(searchPlaces);
   const notifyFn = useServerFn(notifyPartnerOfNewRecord);
   const qc = useQueryClient();
 
@@ -56,7 +62,11 @@ function NewRecordPage() {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<Place[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
   const [place, setPlace] = useState<Place | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
   const [tag, setTag] = useState<Tag>("데이트");
   const [memo, setMemo] = useState("");
   // score is in STARS (0-5, step 0.5); saved as score*2 (0-10)
@@ -69,7 +79,8 @@ function NewRecordPage() {
   const fileInput = useRef<HTMLInputElement>(null);
   const dragIdx = useRef<number | null>(null);
 
-  const browserKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+  const kakaoKey = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
+  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => photos.forEach((p) => { if (p.file) URL.revokeObjectURL(p.preview); });
@@ -99,7 +110,9 @@ function NewRecordPage() {
         if (rec.tag && (TAGS as readonly string[]).includes(rec.tag)) setTag(rec.tag as Tag);
         if (rec.location_name && rec.lat != null && rec.lng != null) {
           setPlace({ id: "existing", name: rec.location_name, address: "", lat: rec.lat, lng: rec.lng });
-          setQuery(rec.location_name);
+          setQuery("");
+        } else if (rec.location_name) {
+          setPlace({ id: "manual", name: rec.location_name, address: "", lat: null, lng: null });
         }
         const [{ data: ph }, { data: rt }, { data: mm }] = await Promise.all([
           supabase.from("photos").select("id, storage_url, order").eq("record_id", rec.id).order("order"),
@@ -165,18 +178,82 @@ function NewRecordPage() {
     dragIdx.current = null;
   }
 
-  async function runSearch() {
-    if (!query.trim()) return;
-    setSearching(true);
-    try {
-      const r = await placesFn({ data: { query: query.trim() } });
-      setResults(r);
-    } catch (e: any) {
-      toast.error(e.message ?? "검색 실패");
-    } finally {
-      setSearching(false);
+  // Debounced Kakao Local API search
+  useEffect(() => {
+    if (place) return;
+    const q = query.trim();
+    if (!q) {
+      setResults([]);
+      setSearched(false);
+      return;
     }
+    if (!kakaoKey) return;
+    const t = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(
+          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&size=10`,
+          { headers: { Authorization: `KakaoAK ${kakaoKey}` } },
+        );
+        if (!res.ok) throw new Error(`Kakao ${res.status}`);
+        const json = await res.json();
+        const docs = (json.documents ?? []) as Array<any>;
+        setResults(
+          docs.map((d) => ({
+            id: d.id,
+            name: d.place_name,
+            address: d.road_address_name || d.address_name || "",
+            category: d.category_group_name || "",
+            lat: parseFloat(d.y),
+            lng: parseFloat(d.x),
+          })),
+        );
+        setSearched(true);
+      } catch (e: any) {
+        console.error("[kakao search]", e);
+        setResults([]);
+        setSearched(true);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query, kakaoKey, place]);
+
+  // Load Kakao Maps JS SDK once
+  function loadKakaoSdk(): Promise<any> {
+    return new Promise((resolve, reject) => {
+      if (!kakaoKey) return reject(new Error("no key"));
+      const w = window as any;
+      if (w.kakao?.maps) return resolve(w.kakao);
+      const existing = document.getElementById("kakao-maps-sdk") as HTMLScriptElement | null;
+      const onReady = () => w.kakao.maps.load(() => resolve(w.kakao));
+      if (existing) {
+        existing.addEventListener("load", onReady, { once: true });
+        return;
+      }
+      const s = document.createElement("script");
+      s.id = "kakao-maps-sdk";
+      s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoKey}&autoload=false`;
+      s.async = true;
+      s.onload = onReady;
+      s.onerror = () => reject(new Error("kakao sdk load failed"));
+      document.head.appendChild(s);
+    });
   }
+
+  // Render Kakao map preview when a place with coords is selected
+  useEffect(() => {
+    if (!place || place.lat == null || place.lng == null || !mapRef.current) return;
+    let cancelled = false;
+    loadKakaoSdk().then((kakao) => {
+      if (cancelled || !mapRef.current) return;
+      const center = new kakao.maps.LatLng(place.lat, place.lng);
+      const map = new kakao.maps.Map(mapRef.current, { center, level: 4 });
+      new kakao.maps.Marker({ position: center, map });
+    }).catch((e) => console.error("[kakao map]", e));
+    return () => { cancelled = true; };
+  }, [place?.lat, place?.lng]);
 
   async function submit() {
     if (submitting) return;

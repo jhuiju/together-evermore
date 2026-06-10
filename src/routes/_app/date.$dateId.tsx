@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Check, ChevronLeft, ChevronRight, Loader2, MapPin, Pencil, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Loader2, MapPin, Pencil, Star, Trash2 } from "lucide-react";
 import { X } from "lucide-react";
 import {
   AlertDialog,
@@ -120,6 +120,15 @@ function DateDetailPage() {
   const { dateId } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+
+  function goBackToCalendar() {
+    let search: { year?: number; month?: number } = {};
+    try {
+      const raw = sessionStorage.getItem("calendar:lastMonth");
+      if (raw) search = JSON.parse(raw);
+    } catch {}
+    navigate({ to: "/calendar", search });
+  }
 
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<string | null>(null);
@@ -399,6 +408,18 @@ function DateDetailPage() {
 
   return (
     <div className="space-y-5 pb-32">
+      {/* Back to calendar */}
+      <div className="-mx-4 px-4 -mt-2 pb-1 sticky top-[57px] z-20 bg-[var(--app-bg)]/95 backdrop-blur">
+        <button
+          type="button"
+          onClick={goBackToCalendar}
+          className="inline-flex items-center gap-1 py-2 text-sm font-medium text-foreground hover:text-primary"
+          aria-label="캘린더로 돌아가기"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span>캘린더</span>
+        </button>
+      </div>
       {/* Carousel */}
       {photos.length > 0 ? (
         <div

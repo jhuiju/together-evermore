@@ -360,7 +360,7 @@ function DateDetailPage() {
     setDeleting(true);
     const snapshot = { record, photos: [...photos], ratings };
     toast.success("기록이 삭제됐어요");
-    navigate({ to: "/calendar" });
+    goBackToCalendar();
     try {
       const { error: rErr } = await supabase.from("ratings").delete().eq("record_id", record.id);
       if (rErr) throw rErr;

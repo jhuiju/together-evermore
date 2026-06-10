@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,14 @@ import { LazyImage } from "@/components/lazy-image";
 import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_app/calendar")({
+  validateSearch: (search: Record<string, unknown>) => {
+    const y = Number(search.year);
+    const m = Number(search.month);
+    return {
+      year: Number.isFinite(y) ? y : undefined,
+      month: Number.isFinite(m) ? m : undefined,
+    } as { year?: number; month?: number };
+  },
   component: CalendarPage,
 });
 
@@ -73,7 +81,14 @@ function recordsQueryOptions(coupleId: string, myId: string, year: number, month
 }
 
 function CalendarPage() {
-  const [cursor, setCursor] = useState(new Date());
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+  const [cursor, setCursor] = useState(() => {
+    if (search.year && search.month) {
+      return new Date(search.year, search.month - 1, 1);
+    }
+    return new Date();
+  });
   const [coupleName, setCoupleName] = useState("우리");
   const [anniversary, setAnniversary] = useState<string | null>(null);
   const [myId, setMyId] = useState<string | null>(null);
@@ -91,6 +106,24 @@ function CalendarPage() {
       firstDow: new Date(y, m, 1).getDay(),
     };
   }, [cursor]);
+
+  // Keep URL search params in sync so browser back returns to the same month.
+  useEffect(() => {
+    if (search.year !== year || search.month !== month + 1) {
+      navigate({
+        to: "/calendar",
+        search: { year, month: month + 1 },
+        replace: true,
+      });
+    }
+    // Also persist as a fallback for back navigation from detail pages.
+    try {
+      sessionStorage.setItem(
+        "calendar:lastMonth",
+        JSON.stringify({ year, month: month + 1 }),
+      );
+    } catch {}
+  }, [year, month, search.year, search.month, navigate]);
 
   useEffect(() => {
     (async () => {

@@ -178,7 +178,7 @@ function NewRecordPage() {
     dragIdx.current = null;
   }
 
-  // Debounced Kakao Local API search
+  // Debounced Kakao Local API search (via server proxy)
   useEffect(() => {
     if (place) return;
     const q = query.trim();
@@ -187,16 +187,19 @@ function NewRecordPage() {
       setSearched(false);
       return;
     }
-    if (!kakaoKey) return;
     const t = setTimeout(async () => {
       setSearching(true);
+      const url = `/api/kakao/search?query=${encodeURIComponent(q)}&size=10`;
+      console.log("[kakao search] GET", url);
       try {
-        const res = await fetch(
-          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&size=10`,
-          { headers: { Authorization: `KakaoAK ${kakaoKey}` } },
-        );
-        if (!res.ok) throw new Error(`Kakao ${res.status}`);
-        const json = await res.json();
+        const res = await fetch(url);
+        const json = await res.json().catch(() => ({}));
+        console.log("[kakao search] status", res.status, "body", json);
+        if (!res.ok) {
+          throw new Error(
+            `status ${res.status}: ${json?.error ?? "unknown error"}`,
+          );
+        }
         const docs = (json.documents ?? []) as Array<any>;
         setResults(
           docs.map((d) => ({
@@ -210,7 +213,8 @@ function NewRecordPage() {
         );
         setSearched(true);
       } catch (e: any) {
-        console.error("[kakao search]", e);
+        console.error("[kakao search] failed", e);
+        toast.error("검색 중 오류가 발생했어요");
         setResults([]);
         setSearched(true);
       } finally {
@@ -218,7 +222,7 @@ function NewRecordPage() {
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [query, kakaoKey, place]);
+  }, [query, place]);
 
   // Load Kakao Maps JS SDK once
   function loadKakaoSdk(): Promise<any> {

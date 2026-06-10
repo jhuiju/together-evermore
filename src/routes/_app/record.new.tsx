@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { searchPlaces } from "@/lib/places.functions";
 import { notifyPartnerOfNewRecord } from "@/lib/push.functions";
 import { getSignedPhotoUrls } from "@/lib/photos";
 import { compressImage } from "@/lib/image-compress";
@@ -18,7 +17,8 @@ import {
   ImagePlus,
   Loader2,
   MapPin,
-  Search,
+  Pencil,
+  Check,
   Star,
   X,
 } from "lucide-react";
@@ -31,7 +31,14 @@ export const Route = createFileRoute("/_app/record/new")({
 const TAGS = ["데이트", "여행", "일상", "특별한날"] as const;
 type Tag = (typeof TAGS)[number];
 
-type Place = { id: string; name: string; address: string; lat: number; lng: number };
+type Place = {
+  id: string;
+  name: string;
+  address: string;
+  category?: string;
+  lat: number | null;
+  lng: number | null;
+};
 type Photo = {
   preview: string;
   file?: File;        // present for newly added photos
@@ -47,7 +54,6 @@ function todayStr() {
 function NewRecordPage() {
   const { date: dateParam } = Route.useSearch();
   const navigate = useNavigate();
-  const placesFn = useServerFn(searchPlaces);
   const notifyFn = useServerFn(notifyPartnerOfNewRecord);
   const qc = useQueryClient();
 
@@ -56,7 +62,11 @@ function NewRecordPage() {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<Place[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
   const [place, setPlace] = useState<Place | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
   const [tag, setTag] = useState<Tag>("데이트");
   const [memo, setMemo] = useState("");
   // score is in STARS (0-5, step 0.5); saved as score*2 (0-10)
@@ -69,7 +79,8 @@ function NewRecordPage() {
   const fileInput = useRef<HTMLInputElement>(null);
   const dragIdx = useRef<number | null>(null);
 
-  const browserKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+  const kakaoKey = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
+  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => photos.forEach((p) => { if (p.file) URL.revokeObjectURL(p.preview); });
@@ -99,7 +110,9 @@ function NewRecordPage() {
         if (rec.tag && (TAGS as readonly string[]).includes(rec.tag)) setTag(rec.tag as Tag);
         if (rec.location_name && rec.lat != null && rec.lng != null) {
           setPlace({ id: "existing", name: rec.location_name, address: "", lat: rec.lat, lng: rec.lng });
-          setQuery(rec.location_name);
+          setQuery("");
+        } else if (rec.location_name) {
+          setPlace({ id: "manual", name: rec.location_name, address: "", lat: null, lng: null });
         }
         const [{ data: ph }, { data: rt }, { data: mm }] = await Promise.all([
           supabase.from("photos").select("id, storage_url, order").eq("record_id", rec.id).order("order"),
@@ -165,18 +178,82 @@ function NewRecordPage() {
     dragIdx.current = null;
   }
 
-  async function runSearch() {
-    if (!query.trim()) return;
-    setSearching(true);
-    try {
-      const r = await placesFn({ data: { query: query.trim() } });
-      setResults(r);
-    } catch (e: any) {
-      toast.error(e.message ?? "검색 실패");
-    } finally {
-      setSearching(false);
+  // Debounced Kakao Local API search
+  useEffect(() => {
+    if (place) return;
+    const q = query.trim();
+    if (!q) {
+      setResults([]);
+      setSearched(false);
+      return;
     }
+    if (!kakaoKey) return;
+    const t = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(
+          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&size=10`,
+          { headers: { Authorization: `KakaoAK ${kakaoKey}` } },
+        );
+        if (!res.ok) throw new Error(`Kakao ${res.status}`);
+        const json = await res.json();
+        const docs = (json.documents ?? []) as Array<any>;
+        setResults(
+          docs.map((d) => ({
+            id: d.id,
+            name: d.place_name,
+            address: d.road_address_name || d.address_name || "",
+            category: d.category_group_name || "",
+            lat: parseFloat(d.y),
+            lng: parseFloat(d.x),
+          })),
+        );
+        setSearched(true);
+      } catch (e: any) {
+        console.error("[kakao search]", e);
+        setResults([]);
+        setSearched(true);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query, kakaoKey, place]);
+
+  // Load Kakao Maps JS SDK once
+  function loadKakaoSdk(): Promise<any> {
+    return new Promise((resolve, reject) => {
+      if (!kakaoKey) return reject(new Error("no key"));
+      const w = window as any;
+      if (w.kakao?.maps) return resolve(w.kakao);
+      const existing = document.getElementById("kakao-maps-sdk") as HTMLScriptElement | null;
+      const onReady = () => w.kakao.maps.load(() => resolve(w.kakao));
+      if (existing) {
+        existing.addEventListener("load", onReady, { once: true });
+        return;
+      }
+      const s = document.createElement("script");
+      s.id = "kakao-maps-sdk";
+      s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoKey}&autoload=false`;
+      s.async = true;
+      s.onload = onReady;
+      s.onerror = () => reject(new Error("kakao sdk load failed"));
+      document.head.appendChild(s);
+    });
   }
+
+  // Render Kakao map preview when a place with coords is selected
+  useEffect(() => {
+    if (!place || place.lat == null || place.lng == null || !mapRef.current) return;
+    let cancelled = false;
+    loadKakaoSdk().then((kakao) => {
+      if (cancelled || !mapRef.current) return;
+      const center = new kakao.maps.LatLng(place.lat, place.lng);
+      const map = new kakao.maps.Map(mapRef.current, { center, level: 4 });
+      new kakao.maps.Marker({ position: center, map });
+    }).catch((e) => console.error("[kakao map]", e));
+    return () => { cancelled = true; };
+  }, [place?.lat, place?.lng]);
 
   async function submit() {
     if (submitting) return;
@@ -323,11 +400,6 @@ function NewRecordPage() {
     }
   }
 
-  const staticMapUrl =
-    place && browserKey
-      ? `https://maps.googleapis.com/maps/api/staticmap?center=${place.lat},${place.lng}&zoom=15&size=640x240&scale=2&markers=color:0xec4899%7C${place.lat},${place.lng}&key=${browserKey}`
-      : null;
-
   return (
     <div className="space-y-6 pb-8">
       <h2 className="text-xl font-semibold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
@@ -405,43 +477,133 @@ function NewRecordPage() {
       {/* Location */}
       <div className="space-y-2">
         <Label className="flex items-center gap-1.5 text-sm"><MapPin className="w-4 h-4 text-purple-500" />장소</Label>
-        <div className="flex gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } }}
-            placeholder="장소를 검색해보세요"
-          />
-          <Button type="button" variant="outline" onClick={runSearch} disabled={searching}>
-            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-          </Button>
-        </div>
-        {results.length > 0 && !place && (
-          <div className="rounded-lg border border-border divide-y max-h-60 overflow-auto">
-            {results.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => { setPlace(r); setResults([]); setQuery(r.name); }}
-                className="w-full text-left px-3 py-2 hover:bg-pink-50 dark:hover:bg-pink-950/30 text-sm"
-              >
-                <div className="font-medium">{r.name}</div>
-                <div className="text-xs text-muted-foreground truncate">{r.address}</div>
-              </button>
-            ))}
-          </div>
+        {!place && (
+          <>
+            <div className="relative">
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="장소를 검색해보세요 (카카오맵)"
+              />
+              {searching && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+              )}
+            </div>
+            {results.length > 0 && (
+              <div className="rounded-lg border border-border divide-y max-h-60 overflow-auto">
+                {results.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => {
+                      setPlace(r);
+                      setResults([]);
+                      setQuery("");
+                      setSearched(false);
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-pink-50 dark:hover:bg-pink-950/30 text-sm"
+                  >
+                    <div className="font-medium flex items-center gap-2">
+                      <span>{r.name}</span>
+                      {r.category && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300">
+                          {r.category}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">{r.address}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {searched && !searching && results.length === 0 && !manualMode && (
+              <div className="rounded-lg border border-dashed border-border p-3 text-center space-y-2">
+                <p className="text-sm text-muted-foreground">검색 결과가 없어요</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setManualMode(true);
+                    setPlace({ id: "manual", name: query.trim(), address: "", lat: null, lng: null });
+                    setNameDraft(query.trim());
+                    setEditingName(true);
+                    setQuery("");
+                    setResults([]);
+                  }}
+                >
+                  장소 이름 직접 입력하기
+                </Button>
+              </div>
+            )}
+          </>
         )}
         {place && (
           <div className="rounded-xl overflow-hidden border border-purple-200/60">
-            {staticMapUrl && (
-              <img src={staticMapUrl} alt={place.name} className="w-full h-32 object-cover" />
+            {place.lat != null && place.lng != null && (
+              <div ref={mapRef} className="w-full h-40 bg-muted" />
             )}
-            <div className="flex items-center justify-between p-3 bg-purple-50/40 dark:bg-purple-950/20">
-              <div>
-                <div className="text-sm font-medium">{place.name}</div>
-                <div className="text-xs text-muted-foreground">{place.address}</div>
+            <div className="flex items-start justify-between gap-2 p-3 bg-purple-50/40 dark:bg-purple-950/20">
+              <div className="min-w-0 flex-1">
+                {editingName ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      autoFocus
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const n = nameDraft.trim();
+                          if (n) setPlace({ ...place, name: n });
+                          setEditingName(false);
+                        }
+                      }}
+                      className="h-8 text-sm"
+                      placeholder="장소 이름"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const n = nameDraft.trim();
+                        if (n) setPlace({ ...place, name: n });
+                        setEditingName(false);
+                      }}
+                      className="text-purple-600 hover:text-purple-700"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <div className="text-sm font-medium truncate">{place.name}</div>
+                    <button
+                      type="button"
+                      onClick={() => { setNameDraft(place.name); setEditingName(true); }}
+                      className="text-muted-foreground hover:text-foreground shrink-0"
+                      aria-label="장소 이름 수정"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                {place.address && (
+                  <div className="text-xs text-muted-foreground truncate mt-0.5">{place.address}</div>
+                )}
+                <p className="text-[11px] text-muted-foreground mt-1">장소 이름을 직접 수정할 수 있어요</p>
               </div>
-              <button type="button" onClick={() => { setPlace(null); setQuery(""); }} className="text-muted-foreground hover:text-foreground">
+              <button
+                type="button"
+                onClick={() => {
+                  setPlace(null);
+                  setQuery("");
+                  setEditingName(false);
+                  setManualMode(false);
+                  setSearched(false);
+                }}
+                className="text-muted-foreground hover:text-foreground shrink-0"
+                aria-label="장소 초기화"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>

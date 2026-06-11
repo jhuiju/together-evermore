@@ -232,7 +232,7 @@ function CalendarPage() {
         ))}
         {isLoading && records.length === 0
           ? days.map((d) => (
-              <Skeleton key={`s-${d}`} className="aspect-[4/3] rounded-lg" />
+              <Skeleton key={`s-${d}`} className="aspect-[2/3] rounded-lg" />
 
             ))
           : days.map((d) => {

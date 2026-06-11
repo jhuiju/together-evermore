@@ -251,7 +251,7 @@ function CalendarPage() {
               to={rec ? "/date/$dateId" : "/record/new"}
               params={rec ? { dateId: rec.id } : (undefined as never)}
               search={!rec ? { date: dateStr } : (undefined as never)}
-              className={`relative aspect-[3/4] flex flex-col p-1 ${
+              className={`relative aspect-[4/3] flex flex-col p-1 ${
                 rec
                   ? "bg-[var(--app-surface)] rounded-lg border border-[var(--app-cell-border)] overflow-hidden"
                   : ""
@@ -266,24 +266,27 @@ function CalendarPage() {
                   src={rec.thumb}
                   alt=""
                   loading="lazy"
-                  wrapperClassName="mt-1 flex-1 rounded-[4px] bg-[var(--app-border)]"
+                  wrapperClassName="mt-0.5 flex-1 rounded-[4px] bg-[var(--app-border)]"
                 />
               )}
 
               {rec && (hasMine || hasPartner) && (
-                <div className="mt-1 flex gap-0.5">
+                <div className="mt-0.5 flex gap-0.5">
                   {bothRated ? (
                     <>
-                      <span className="flex-1 text-[10px] leading-tight rounded bg-[var(--app-pink-badge-bg)] text-[var(--app-pink-badge-text)] text-center py-0.5 font-medium">
-                        ♥{rec.myScore}
+                      <span className="flex-1 flex items-center justify-center gap-0.5 rounded bg-[var(--app-pink-badge-bg)] text-[var(--app-pink-badge-text)] py-[1px] font-medium">
+                        <span className="text-[8px] leading-none">♥</span>
+                        <span className="text-[11px] leading-none">{rec.myScore}</span>
                       </span>
-                      <span className="flex-1 text-[10px] leading-tight rounded bg-[var(--app-purple-badge-bg)] text-[var(--app-purple-badge-text)] text-center py-0.5 font-medium">
-                        ♥{rec.partnerScore}
+                      <span className="flex-1 flex items-center justify-center gap-0.5 rounded bg-[var(--app-purple-badge-bg)] text-[var(--app-purple-badge-text)] py-[1px] font-medium">
+                        <span className="text-[8px] leading-none">♥</span>
+                        <span className="text-[11px] leading-none">{rec.partnerScore}</span>
                       </span>
                     </>
                   ) : (
-                    <span className="flex-1 text-[10px] leading-tight rounded bg-[var(--app-pink-badge-bg)] text-[var(--app-pink-badge-text)] text-center py-0.5 font-medium">
-                      ♥{hasMine ? rec.myScore : rec.partnerScore}
+                    <span className="flex-1 flex items-center justify-center gap-0.5 rounded bg-[var(--app-pink-badge-bg)] text-[var(--app-pink-badge-text)] py-[1px] font-medium">
+                      <span className="text-[8px] leading-none">♥</span>
+                      <span className="text-[11px] leading-none">{hasMine ? rec.myScore : rec.partnerScore}</span>
                     </span>
                   )}
                 </div>

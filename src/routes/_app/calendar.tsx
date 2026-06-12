@@ -228,11 +228,17 @@ function CalendarPage() {
 
       <div className="grid grid-cols-7 gap-1.5">
         {Array.from({ length: firstDow }).map((_, i) => (
-          <div key={`b-${i}`} className="h-[88px]" />
+          <div key={`b-${i}`} className="flex flex-col p-1">
+            <span className="text-[11px] font-medium leading-none opacity-0">.</span>
+            <div style={{ width: "100%", paddingTop: "100%" }} />
+          </div>
         ))}
         {isLoading && records.length === 0
           ? days.map((d) => (
-              <Skeleton key={`s-${d}`} className="h-[88px] rounded-lg" />
+              <div key={`s-${d}`} className="flex flex-col p-1">
+                <span className="text-[11px] font-medium leading-none opacity-0">.</span>
+                <Skeleton className="w-full rounded-[4px]" style={{ paddingTop: "100%" }} />
+              </div>
             ))
           : days.map((d) => {
           const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -250,7 +256,7 @@ function CalendarPage() {
               to={rec ? "/date/$dateId" : "/record/new"}
               params={rec ? { dateId: rec.id } : (undefined as never)}
               search={!rec ? { date: dateStr } : (undefined as never)}
-              className={`relative h-[88px] flex flex-col p-1 ${
+              className={`relative flex flex-col p-1 ${
                 rec
                   ? "bg-[var(--app-surface)] rounded-lg border border-[var(--app-cell-border)] overflow-hidden"
                   : ""
@@ -260,13 +266,19 @@ function CalendarPage() {
                 {d}
               </span>
 
-              {rec?.thumb && (
-                <LazyImage
-                  src={rec.thumb}
-                  alt=""
-                  loading="lazy"
-                  wrapperClassName="mt-0.5 flex-1 rounded-[4px] bg-[var(--app-border)]"
-                />
+              {rec ? (
+                <div className="mt-0.5 relative w-full" style={{ paddingTop: "100%" }}>
+                  {rec.thumb && (
+                    <LazyImage
+                      src={rec.thumb}
+                      alt=""
+                      loading="lazy"
+                      wrapperClassName="absolute inset-0 rounded-[4px] bg-[var(--app-border)]"
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="mt-0.5 w-full" style={{ paddingTop: "100%" }} aria-hidden />
               )}
 
               {rec && (hasMine || hasPartner) && (

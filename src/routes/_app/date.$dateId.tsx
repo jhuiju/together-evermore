@@ -570,33 +570,6 @@ function DateDetailPage() {
         </div>
       )}
 
-      {/* Photo download buttons */}
-      {photos.length > 0 && (
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1 border-primary/30 text-primary hover:bg-primary/5"
-            onClick={() => handleDownloadOne(carouselIdx)}
-            disabled={downloading}
-          >
-            {downloading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
-            사진 저장
-          </Button>
-          {photos.length > 1 && (
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1 border-primary/30 text-primary hover:bg-primary/5"
-              onClick={handleDownloadAll}
-              disabled={downloading}
-            >
-              {downloading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
-              전체 저장
-            </Button>
-          )}
-        </div>
-      )}
 
       {/* Location */}
       {record.location_name && (

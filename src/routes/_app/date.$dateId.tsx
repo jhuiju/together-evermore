@@ -836,6 +836,19 @@ function DateDetailPage() {
           >
             <X className="w-5 h-5" />
           </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownloadOne(viewerIdx);
+            }}
+            disabled={downloading}
+            className="absolute top-0 left-0 m-3 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white disabled:opacity-50"
+            style={{ marginTop: `calc(env(safe-area-inset-top) + 12px)` }}
+            aria-label="사진 저장"
+          >
+            {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+          </button>
           <img
             src={photoUrl(photos[viewerIdx])}
             alt={`사진 ${viewerIdx + 1}`}

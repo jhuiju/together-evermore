@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Loader2, MapPin, Pencil, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Download, Loader2, MapPin, Pencil, Star, Trash2 } from "lucide-react";
 import { X } from "lucide-react";
 import {
   AlertDialog,
@@ -45,6 +45,31 @@ type MemoRow = { id: string; user_id: string; content: string };
 type UserRow = { id: string; nickname: string | null; avatar_url: string | null };
 
 const BROWSER_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) || (ua.includes("Mac") && "ontouchend" in document);
+}
+
+async function downloadPhoto(url: string, filename: string) {
+  if (isIOS()) {
+    window.open(url, "_blank");
+    toast("사진을 길게 눌러서 저장해주세요");
+    return;
+  }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("fetch failed");
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
 
 function Stars({ score, size = 16 }: { score: number; size?: number }) {
   // score is stored 0-10; convert to 0-5 stars with half-step

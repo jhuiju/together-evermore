@@ -315,6 +315,47 @@ function DateDetailPage() {
     return photoBlurs[p.storage_url] ?? "";
   }
 
+  function fileNameFor(index: number) {
+    const ymd = (record?.date ?? "").replace(/-/g, "");
+    return `withlog_${ymd}_${index + 1}.jpg`;
+  }
+
+  async function handleDownloadOne(index: number) {
+    const p = photos[index];
+    if (!p) return;
+    const url = photoUrl(p);
+    if (!url) return;
+    setDownloading(true);
+    try {
+      await downloadPhoto(url, fileNameFor(index));
+      if (!isIOS()) toast.success("사진을 저장했어요 ✓");
+    } catch {
+      toast.error("사진 저장에 실패했어요. 다시 시도해주세요");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  async function handleDownloadAll() {
+    if (photos.length === 0) return;
+    setDownloading(true);
+    try {
+      let count = 0;
+      for (let i = 0; i < photos.length; i++) {
+        const url = photoUrl(photos[i]);
+        if (!url) continue;
+        await downloadPhoto(url, fileNameFor(i));
+        count++;
+        if (i < photos.length - 1) await new Promise((r) => setTimeout(r, 300));
+      }
+      if (!isIOS()) toast.success(`${count}장의 사진을 저장했어요 ✓`);
+    } catch {
+      toast.error("사진 저장에 실패했어요. 다시 시도해주세요");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   async function submitRating() {
     if (!me || !record || pendingScore <= 0) return;
     // Optimistic update: reflect the new rating immediately.

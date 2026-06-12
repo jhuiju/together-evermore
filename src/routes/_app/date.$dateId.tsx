@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Loader2, MapPin, Pencil, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Download, Loader2, MapPin, Pencil, Star, Trash2 } from "lucide-react";
 import { X } from "lucide-react";
 import {
   AlertDialog,
@@ -45,6 +45,31 @@ type MemoRow = { id: string; user_id: string; content: string };
 type UserRow = { id: string; nickname: string | null; avatar_url: string | null };
 
 const BROWSER_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) || (ua.includes("Mac") && "ontouchend" in document);
+}
+
+async function downloadPhoto(url: string, filename: string) {
+  if (isIOS()) {
+    window.open(url, "_blank");
+    toast("사진을 길게 눌러서 저장해주세요");
+    return;
+  }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("fetch failed");
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
 
 function Stars({ score, size = 16 }: { score: number; size?: number }) {
   // score is stored 0-10; convert to 0-5 stars with half-step
@@ -142,6 +167,7 @@ function DateDetailPage() {
   const [submittingRating, setSubmittingRating] = useState(false);
   const [pendingScore, setPendingScore] = useState(0);
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [myCoupleId, setMyCoupleId] = useState<string | null>(null);
   const touchStart = useRef<number | null>(null);
 
@@ -287,6 +313,47 @@ function DateDetailPage() {
   }
   function photoBlur(p: PhotoRow) {
     return photoBlurs[p.storage_url] ?? "";
+  }
+
+  function fileNameFor(index: number) {
+    const ymd = (record?.date ?? "").replace(/-/g, "");
+    return `withlog_${ymd}_${index + 1}.jpg`;
+  }
+
+  async function handleDownloadOne(index: number) {
+    const p = photos[index];
+    if (!p) return;
+    const url = photoUrl(p);
+    if (!url) return;
+    setDownloading(true);
+    try {
+      await downloadPhoto(url, fileNameFor(index));
+      if (!isIOS()) toast.success("사진을 저장했어요 ✓");
+    } catch {
+      toast.error("사진 저장에 실패했어요. 다시 시도해주세요");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  async function handleDownloadAll() {
+    if (photos.length === 0) return;
+    setDownloading(true);
+    try {
+      let count = 0;
+      for (let i = 0; i < photos.length; i++) {
+        const url = photoUrl(photos[i]);
+        if (!url) continue;
+        await downloadPhoto(url, fileNameFor(i));
+        count++;
+        if (i < photos.length - 1) await new Promise((r) => setTimeout(r, 300));
+      }
+      if (!isIOS()) toast.success(`${count}장의 사진을 저장했어요 ✓`);
+    } catch {
+      toast.error("사진 저장에 실패했어요. 다시 시도해주세요");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   async function submitRating() {
@@ -500,6 +567,34 @@ function DateDetailPage() {
       ) : (
         <div className="-mx-4 aspect-[2/1] bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center text-muted-foreground text-sm">
           사진이 없어요
+        </div>
+      )}
+
+      {/* Photo download buttons */}
+      {photos.length > 0 && (
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => handleDownloadOne(carouselIdx)}
+            disabled={downloading}
+          >
+            {downloading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+            사진 저장
+          </Button>
+          {photos.length > 1 && (
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 border-primary/30 text-primary hover:bg-primary/5"
+              onClick={handleDownloadAll}
+              disabled={downloading}
+            >
+              {downloading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+              전체 저장
+            </Button>
+          )}
         </div>
       )}
 
@@ -740,6 +835,19 @@ function DateDetailPage() {
             aria-label="닫기"
           >
             <X className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownloadOne(viewerIdx);
+            }}
+            disabled={downloading}
+            className="absolute top-0 left-0 m-3 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white disabled:opacity-50"
+            style={{ marginTop: `calc(env(safe-area-inset-top) + 12px)` }}
+            aria-label="사진 저장"
+          >
+            {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
           </button>
           <img
             src={photoUrl(photos[viewerIdx])}

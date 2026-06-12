@@ -167,6 +167,7 @@ function DateDetailPage() {
   const [submittingRating, setSubmittingRating] = useState(false);
   const [pendingScore, setPendingScore] = useState(0);
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [myCoupleId, setMyCoupleId] = useState<string | null>(null);
   const touchStart = useRef<number | null>(null);
 

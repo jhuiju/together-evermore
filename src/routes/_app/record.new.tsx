@@ -777,3 +777,65 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
     </div>
   );
 }
+
+function SortablePhoto({
+  photo,
+  index,
+  editMode,
+  onRemove,
+}: {
+  photo: Photo;
+  index: number;
+  editMode: boolean;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: photo.uid,
+    disabled: !editMode,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative aspect-square rounded-lg overflow-hidden bg-muted ${
+        editMode ? "border-2 border-pink-300 shadow-sm" : "border border-pink-200/60"
+      }`}
+    >
+      {photo.preview ? (
+        <img src={photo.preview} alt="" className="w-full h-full object-cover" draggable={false} />
+      ) : (
+        <div className="w-full h-full bg-muted animate-pulse" />
+      )}
+      <span className="absolute bottom-1 left-1 text-[10px] bg-pink-500/90 text-white px-1.5 rounded-full">
+        {index + 1}
+      </span>
+      {editMode && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            className="absolute -top-1 -right-1 bg-black/80 text-white rounded-full p-1 shadow-md z-10"
+            aria-label="사진 삭제"
+          >
+            <X className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.preventDefault()}
+            className="absolute bottom-1 right-1 bg-black/70 text-white rounded p-1 touch-none cursor-grab active:cursor-grabbing"
+            aria-label="순서 변경"
+          >
+            <GripVertical className="w-3 h-3" />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}

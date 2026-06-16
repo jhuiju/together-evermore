@@ -46,18 +46,39 @@ function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--app-bg)] pb-20">
-      <header className="border-b border-[var(--app-divider)] bg-[var(--app-bg)] sticky top-0 z-10">
+    <div
+      className="bg-[var(--app-bg)]"
+      style={{
+        minHeight: "100vh",
+        // dvh accounts for Android Chrome browser UI; falls back to vh above
+        ["--app-header-h" as any]: "49px",
+        ["--app-bottom-nav-h" as any]: "64px",
+      }}
+    >
+      <header
+        className="border-b border-[var(--app-divider)] bg-[var(--app-bg)] sticky top-0 z-10"
+        style={{ height: "var(--app-header-h)" }}
+      >
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
           <Heart className="w-5 h-5 text-[var(--app-pink)] fill-[var(--app-pink)]" />
           <h1 className="font-semibold text-[var(--app-text)]">Withlog</h1>
         </div>
       </header>
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main
+        className="max-w-2xl mx-auto px-4 py-6"
+        style={{
+          paddingBottom: hasCouple
+            ? "calc(var(--app-bottom-nav-h) + env(safe-area-inset-bottom) + 1rem)"
+            : "calc(env(safe-area-inset-bottom) + 1.5rem)",
+        }}
+      >
         <Outlet />
       </main>
       {hasCouple && (
-        <nav className="fixed bottom-0 inset-x-0 border-t border-[var(--app-divider)] bg-[var(--app-bg)]">
+        <nav
+          className="fixed bottom-0 inset-x-0 border-t border-[var(--app-divider)] bg-[var(--app-bg)]"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
           <div className="max-w-2xl mx-auto grid grid-cols-3">
             <NavItem to="/calendar" icon={Calendar} label="캘린더" />
             <NavItem to="/map" icon={Map} label="지도" />

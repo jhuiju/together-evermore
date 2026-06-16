@@ -219,3 +219,12 @@
     animation: shimmer 1.4s ease-in-out infinite;
   }
 }
+
+/* Use dynamic viewport height where supported (Android Chrome address bar fix).
+   Falls back to 100vh for older browsers. */
+.min-h-screen-dvh { min-height: 100vh; }
+.h-screen-dvh { height: 100vh; }
+@supports (height: 100dvh) {
+  .min-h-screen-dvh { min-height: 100dvh; }
+  .h-screen-dvh { height: 100dvh; }
+}

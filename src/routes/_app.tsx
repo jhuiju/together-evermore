@@ -47,10 +47,8 @@ function AppLayout() {
 
   return (
     <div
-      className="bg-[var(--app-bg)]"
+      className="bg-[var(--app-bg)] min-h-screen-dvh"
       style={{
-        minHeight: "100vh",
-        // dvh accounts for Android Chrome browser UI; falls back to vh above
         ["--app-header-h" as any]: "49px",
         ["--app-bottom-nav-h" as any]: "64px",
       }}

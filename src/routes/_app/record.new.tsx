@@ -486,9 +486,36 @@ function NewRecordPage() {
 
       {/* Photos */}
       <div className="space-y-2">
-        <Label className="flex items-center gap-1.5 text-sm">
-          <ImagePlus className="w-4 h-4 text-pink-500" />사진 <span className="text-xs text-muted-foreground">({photos.length}/10)</span>
-        </Label>
+        <div className="flex items-center justify-between">
+          <Label className="flex items-center gap-1.5 text-sm">
+            <ImagePlus className="w-4 h-4 text-pink-500" />사진{" "}
+            <span className="text-xs text-muted-foreground">{photos.length} / 10</span>
+          </Label>
+          {photos.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setEditMode((v) => !v)}
+              className={`text-xs px-3 py-1 rounded-full transition-colors ${
+                editMode
+                  ? "bg-pink-500 text-white"
+                  : "bg-muted text-muted-foreground hover:bg-pink-100 dark:hover:bg-pink-950/30"
+              }`}
+            >
+              {editMode ? "완료" : "편집"}
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) addFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
         <div
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
@@ -497,48 +524,38 @@ function NewRecordPage() {
             setDragOver(false);
             addFiles(e.dataTransfer.files);
           }}
-          onClick={() => fileInput.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-            dragOver ? "border-pink-400 bg-pink-50/60 dark:bg-pink-950/30" : "border-border hover:border-pink-300"
+          className={`grid grid-cols-3 gap-2 rounded-xl transition-colors ${
+            dragOver ? "ring-2 ring-pink-400 ring-offset-2 ring-offset-background" : ""
           }`}
         >
-          <ImagePlus className="w-8 h-8 mx-auto text-pink-400 mb-2" />
-          <p className="text-sm text-muted-foreground">탭하거나 드래그해서 사진 추가</p>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => e.target.files && addFiles(e.target.files)}
-          />
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext
+              items={photos.map((p) => p.uid)}
+              strategy={rectSortingStrategy}
+            >
+              {photos.map((p, i) => (
+                <SortablePhoto
+                  key={p.uid}
+                  photo={p}
+                  index={i}
+                  editMode={editMode}
+                  onRemove={() => removePhoto(i)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+          {photos.length < 10 && (
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              className="relative aspect-square rounded-lg border-2 border-dashed border-pink-300/70 flex flex-col items-center justify-center text-pink-400 hover:border-pink-400 hover:bg-pink-50/60 dark:hover:bg-pink-950/30 transition-colors"
+              aria-label="사진 추가"
+            >
+              <Plus className="w-6 h-6" />
+              <span className="text-[10px] mt-1">사진 추가</span>
+            </button>
+          )}
         </div>
-        {photos.length > 0 && (
-          <div className="grid grid-cols-4 gap-2">
-            {photos.map((p, i) => (
-              <div
-                key={p.preview}
-                draggable
-                onDragStart={() => onPhotoDragStart(i)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => onPhotoDrop(i)}
-                className="relative aspect-square rounded-lg overflow-hidden border border-pink-200/60 group cursor-move"
-              >
-                <img src={p.preview} alt="" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); removePhoto(i); }}
-                  className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-                <span className="absolute bottom-1 left-1 text-[10px] bg-pink-500/90 text-white px-1.5 rounded-full">
-                  {i + 1}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Location */}

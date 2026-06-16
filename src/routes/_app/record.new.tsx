@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +21,27 @@ import {
   Check,
   Star,
   X,
+  GripVertical,
+  Plus,
 } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export const Route = createFileRoute("/_app/record/new")({
   validateSearch: (s: Record<string, unknown>) => ({ date: (s.date as string) ?? "" }),
@@ -40,6 +60,7 @@ type Place = {
   lng: number | null;
 };
 type Photo = {
+  uid: string;        // stable id for sortable
   preview: string;
   file?: File;        // present for newly added photos
   existingId?: string; // present for photos already in DB
@@ -76,8 +97,8 @@ function NewRecordPage() {
   const [existingRecordId, setExistingRecordId] = useState<string | null>(null);
   const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
   const [loadingExisting, setLoadingExisting] = useState(true);
+  const [editMode, setEditMode] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  const dragIdx = useRef<number | null>(null);
 
   const kakaoKey = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
   const mapRef = useRef<HTMLDivElement>(null);
@@ -124,6 +145,7 @@ function NewRecordPage() {
         const urlMap = await getSignedPhotoUrls(rows.map((p) => p.storage_url));
         if (cancelled) return;
         setPhotos(rows.map((p) => ({
+          uid: p.id,
           existingId: p.id,
           storageUrl: p.storage_url,
           preview: urlMap[p.storage_url] ?? "",
@@ -149,33 +171,74 @@ function NewRecordPage() {
         toast.error("사진은 최대 10장까지");
         return prev;
       }
-      const next = arr.slice(0, room).map((file) => ({ file, preview: URL.createObjectURL(file) }));
+      const next = arr.slice(0, room).map((file) => ({
+        uid: `new-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        file,
+        preview: URL.createObjectURL(file),
+      }));
       return [...prev, ...next];
     });
   }
 
   function removePhoto(i: number) {
+    let removed: Photo | null = null;
+    let removedIndex = i;
     setPhotos((prev) => {
-      const target = prev[i];
-      if (target.file) URL.revokeObjectURL(target.preview);
-      if (target.existingId) setRemovedPhotoIds((ids) => [...ids, target.existingId!]);
+      removed = prev[i] ?? null;
+      removedIndex = i;
       return prev.filter((_, idx) => idx !== i);
+    });
+    if (!removed) return;
+    const target = removed as Photo;
+    // Show undo toast for 3s. Only finalize side effects (revoke blob URL,
+    // mark existing photo for DB deletion) if undo isn't pressed.
+    let undone = false;
+    toast("사진이 삭제됐어요", {
+      duration: 3000,
+      action: {
+        label: "취소",
+        onClick: () => {
+          undone = true;
+          setPhotos((prev) => {
+            const next = [...prev];
+            const insertAt = Math.min(removedIndex, next.length);
+            next.splice(insertAt, 0, target);
+            return next;
+          });
+        },
+      },
+      onAutoClose: () => {
+        if (undone) return;
+        if (target.file) URL.revokeObjectURL(target.preview);
+        if (target.existingId) {
+          setRemovedPhotoIds((ids) => [...ids, target.existingId!]);
+        }
+      },
+      onDismiss: () => {
+        if (undone) return;
+        if (target.file) URL.revokeObjectURL(target.preview);
+        if (target.existingId) {
+          setRemovedPhotoIds((ids) => [...ids, target.existingId!]);
+        }
+      },
     });
   }
 
-  function onPhotoDragStart(i: number) {
-    dragIdx.current = i;
-  }
-  function onPhotoDrop(i: number) {
-    const from = dragIdx.current;
-    if (from == null || from === i) return;
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
     setPhotos((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(i, 0, moved);
-      return next;
+      const oldIdx = prev.findIndex((p) => p.uid === active.id);
+      const newIdx = prev.findIndex((p) => p.uid === over.id);
+      if (oldIdx < 0 || newIdx < 0) return prev;
+      return arrayMove(prev, oldIdx, newIdx);
     });
-    dragIdx.current = null;
   }
 
   // Debounced Kakao Local API search (via server proxy)
@@ -423,9 +486,36 @@ function NewRecordPage() {
 
       {/* Photos */}
       <div className="space-y-2">
-        <Label className="flex items-center gap-1.5 text-sm">
-          <ImagePlus className="w-4 h-4 text-pink-500" />사진 <span className="text-xs text-muted-foreground">({photos.length}/10)</span>
-        </Label>
+        <div className="flex items-center justify-between">
+          <Label className="flex items-center gap-1.5 text-sm">
+            <ImagePlus className="w-4 h-4 text-pink-500" />사진{" "}
+            <span className="text-xs text-muted-foreground">{photos.length} / 10</span>
+          </Label>
+          {photos.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setEditMode((v) => !v)}
+              className={`text-xs px-3 py-1 rounded-full transition-colors ${
+                editMode
+                  ? "bg-pink-500 text-white"
+                  : "bg-muted text-muted-foreground hover:bg-pink-100 dark:hover:bg-pink-950/30"
+              }`}
+            >
+              {editMode ? "완료" : "편집"}
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) addFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
         <div
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
@@ -434,48 +524,38 @@ function NewRecordPage() {
             setDragOver(false);
             addFiles(e.dataTransfer.files);
           }}
-          onClick={() => fileInput.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-            dragOver ? "border-pink-400 bg-pink-50/60 dark:bg-pink-950/30" : "border-border hover:border-pink-300"
+          className={`grid grid-cols-3 gap-2 rounded-xl transition-colors ${
+            dragOver ? "ring-2 ring-pink-400 ring-offset-2 ring-offset-background" : ""
           }`}
         >
-          <ImagePlus className="w-8 h-8 mx-auto text-pink-400 mb-2" />
-          <p className="text-sm text-muted-foreground">탭하거나 드래그해서 사진 추가</p>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => e.target.files && addFiles(e.target.files)}
-          />
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext
+              items={photos.map((p) => p.uid)}
+              strategy={rectSortingStrategy}
+            >
+              {photos.map((p, i) => (
+                <SortablePhoto
+                  key={p.uid}
+                  photo={p}
+                  index={i}
+                  editMode={editMode}
+                  onRemove={() => removePhoto(i)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+          {photos.length < 10 && (
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              className="relative aspect-square rounded-lg border-2 border-dashed border-pink-300/70 flex flex-col items-center justify-center text-pink-400 hover:border-pink-400 hover:bg-pink-50/60 dark:hover:bg-pink-950/30 transition-colors"
+              aria-label="사진 추가"
+            >
+              <Plus className="w-6 h-6" />
+              <span className="text-[10px] mt-1">사진 추가</span>
+            </button>
+          )}
         </div>
-        {photos.length > 0 && (
-          <div className="grid grid-cols-4 gap-2">
-            {photos.map((p, i) => (
-              <div
-                key={p.preview}
-                draggable
-                onDragStart={() => onPhotoDragStart(i)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => onPhotoDrop(i)}
-                className="relative aspect-square rounded-lg overflow-hidden border border-pink-200/60 group cursor-move"
-              >
-                <img src={p.preview} alt="" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); removePhoto(i); }}
-                  className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-                <span className="absolute bottom-1 left-1 text-[10px] bg-pink-500/90 text-white px-1.5 rounded-full">
-                  {i + 1}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Location */}
@@ -694,6 +774,68 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function SortablePhoto({
+  photo,
+  index,
+  editMode,
+  onRemove,
+}: {
+  photo: Photo;
+  index: number;
+  editMode: boolean;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: photo.uid,
+    disabled: !editMode,
+  });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative aspect-square rounded-lg overflow-hidden bg-muted ${
+        editMode ? "border-2 border-pink-300 shadow-sm" : "border border-pink-200/60"
+      }`}
+    >
+      {photo.preview ? (
+        <img src={photo.preview} alt="" className="w-full h-full object-cover" draggable={false} />
+      ) : (
+        <div className="w-full h-full bg-muted animate-pulse" />
+      )}
+      <span className="absolute bottom-1 left-1 text-[10px] bg-pink-500/90 text-white px-1.5 rounded-full">
+        {index + 1}
+      </span>
+      {editMode && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            className="absolute -top-1 -right-1 bg-black/80 text-white rounded-full p-1 shadow-md z-10"
+            aria-label="사진 삭제"
+          >
+            <X className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.preventDefault()}
+            className="absolute bottom-1 right-1 bg-black/70 text-white rounded p-1 touch-none cursor-grab active:cursor-grabbing"
+            aria-label="순서 변경"
+          >
+            <GripVertical className="w-3 h-3" />
+          </button>
+        </>
+      )}
     </div>
   );
 }

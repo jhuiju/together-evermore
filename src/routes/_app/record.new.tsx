@@ -21,7 +21,27 @@ import {
   Check,
   Star,
   X,
+  GripVertical,
+  Plus,
 } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export const Route = createFileRoute("/_app/record/new")({
   validateSearch: (s: Record<string, unknown>) => ({ date: (s.date as string) ?? "" }),
@@ -40,6 +60,7 @@ type Place = {
   lng: number | null;
 };
 type Photo = {
+  uid: string;        // stable id for sortable
   preview: string;
   file?: File;        // present for newly added photos
   existingId?: string; // present for photos already in DB
@@ -76,8 +97,8 @@ function NewRecordPage() {
   const [existingRecordId, setExistingRecordId] = useState<string | null>(null);
   const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
   const [loadingExisting, setLoadingExisting] = useState(true);
+  const [editMode, setEditMode] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  const dragIdx = useRef<number | null>(null);
 
   const kakaoKey = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
   const mapRef = useRef<HTMLDivElement>(null);
@@ -124,6 +145,7 @@ function NewRecordPage() {
         const urlMap = await getSignedPhotoUrls(rows.map((p) => p.storage_url));
         if (cancelled) return;
         setPhotos(rows.map((p) => ({
+          uid: p.id,
           existingId: p.id,
           storageUrl: p.storage_url,
           preview: urlMap[p.storage_url] ?? "",
@@ -149,33 +171,74 @@ function NewRecordPage() {
         toast.error("사진은 최대 10장까지");
         return prev;
       }
-      const next = arr.slice(0, room).map((file) => ({ file, preview: URL.createObjectURL(file) }));
+      const next = arr.slice(0, room).map((file) => ({
+        uid: `new-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        file,
+        preview: URL.createObjectURL(file),
+      }));
       return [...prev, ...next];
     });
   }
 
   function removePhoto(i: number) {
+    let removed: Photo | null = null;
+    let removedIndex = i;
     setPhotos((prev) => {
-      const target = prev[i];
-      if (target.file) URL.revokeObjectURL(target.preview);
-      if (target.existingId) setRemovedPhotoIds((ids) => [...ids, target.existingId!]);
+      removed = prev[i] ?? null;
+      removedIndex = i;
       return prev.filter((_, idx) => idx !== i);
+    });
+    if (!removed) return;
+    const target = removed as Photo;
+    // Show undo toast for 3s. Only finalize side effects (revoke blob URL,
+    // mark existing photo for DB deletion) if undo isn't pressed.
+    let undone = false;
+    toast("사진이 삭제됐어요", {
+      duration: 3000,
+      action: {
+        label: "취소",
+        onClick: () => {
+          undone = true;
+          setPhotos((prev) => {
+            const next = [...prev];
+            const insertAt = Math.min(removedIndex, next.length);
+            next.splice(insertAt, 0, target);
+            return next;
+          });
+        },
+      },
+      onAutoClose: () => {
+        if (undone) return;
+        if (target.file) URL.revokeObjectURL(target.preview);
+        if (target.existingId) {
+          setRemovedPhotoIds((ids) => [...ids, target.existingId!]);
+        }
+      },
+      onDismiss: () => {
+        if (undone) return;
+        if (target.file) URL.revokeObjectURL(target.preview);
+        if (target.existingId) {
+          setRemovedPhotoIds((ids) => [...ids, target.existingId!]);
+        }
+      },
     });
   }
 
-  function onPhotoDragStart(i: number) {
-    dragIdx.current = i;
-  }
-  function onPhotoDrop(i: number) {
-    const from = dragIdx.current;
-    if (from == null || from === i) return;
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
     setPhotos((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(i, 0, moved);
-      return next;
+      const oldIdx = prev.findIndex((p) => p.uid === active.id);
+      const newIdx = prev.findIndex((p) => p.uid === over.id);
+      if (oldIdx < 0 || newIdx < 0) return prev;
+      return arrayMove(prev, oldIdx, newIdx);
     });
-    dragIdx.current = null;
   }
 
   // Debounced Kakao Local API search (via server proxy)

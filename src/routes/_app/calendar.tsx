@@ -174,8 +174,15 @@ function CalendarPage() {
   }, [anniversary]);
 
   return (
-    <div className="space-y-5 bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div className="space-y-1 pb-4 border-b border-[var(--app-divider)]">
+    <div
+      className="flex flex-col bg-[var(--app-bg)] text-[var(--app-text)]"
+      style={{
+        // Fill viewport: total dvh minus app header, bottom nav, safe area, and main padding (py-6 = 3rem)
+        minHeight:
+          "calc(100dvh - var(--app-header-h) - var(--app-bottom-nav-h) - env(safe-area-inset-bottom) - 3rem)",
+      }}
+    >
+      <div className="space-y-1 pb-4 border-b border-[var(--app-divider)] shrink-0">
         <p className="text-xs text-[var(--app-muted)]">우리들의 캘린더</p>
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-[var(--app-text)]">{coupleName}</h2>
@@ -201,7 +208,7 @@ function CalendarPage() {
         )}
       </div>
 
-      <div className="flex items-center justify-center gap-6">
+      <div className="flex items-center justify-center gap-6 py-4 shrink-0">
         <button onClick={() => setCursor(new Date(year, month - 1, 1))} className="p-1.5 text-[var(--app-muted)] hover:text-[var(--app-text)]">
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -213,7 +220,7 @@ function CalendarPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1.5 text-center text-[11px]">
+      <div className="grid grid-cols-7 gap-1.5 text-center text-[11px] shrink-0">
         {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
           <div
             key={d}
@@ -226,18 +233,18 @@ function CalendarPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1.5">
+      <div
+        className="grid grid-cols-7 gap-1.5 flex-1 min-h-0 mt-1.5"
+        style={{ gridTemplateRows: "repeat(6, minmax(0, 1fr))" }}
+      >
         {Array.from({ length: firstDow }).map((_, i) => (
-          <div key={`b-${i}`} className="flex flex-col p-1">
-            <span className="text-[11px] font-medium leading-none opacity-0">.</span>
-            <div style={{ width: "100%", paddingTop: "100%" }} />
-          </div>
+          <div key={`b-${i}`} />
         ))}
         {isLoading && records.length === 0
           ? days.map((d) => (
-              <div key={`s-${d}`} className="flex flex-col p-1">
+              <div key={`s-${d}`} className="flex flex-col p-1 min-h-0">
                 <span className="text-[11px] font-medium leading-none opacity-0">.</span>
-                <Skeleton className="w-full rounded-[4px]" style={{ paddingTop: "100%" }} />
+                <Skeleton className="w-full flex-1 rounded-[4px] mt-0.5 min-h-0" />
               </div>
             ))
           : days.map((d) => {
@@ -256,7 +263,7 @@ function CalendarPage() {
               to={rec ? "/date/$dateId" : "/record/new"}
               params={rec ? { dateId: rec.id } : (undefined as never)}
               search={!rec ? { date: dateStr } : (undefined as never)}
-              className={`relative flex flex-col p-1 ${
+              className={`relative flex flex-col p-1 min-h-0 ${
                 rec
                   ? "bg-[var(--app-surface)] rounded-lg border border-[var(--app-cell-border)] overflow-hidden"
                   : ""
@@ -267,7 +274,7 @@ function CalendarPage() {
               </span>
 
               {rec ? (
-                <div className="mt-0.5 relative w-full" style={{ paddingTop: "100%" }}>
+                <div className="mt-0.5 relative w-full flex-1 min-h-0">
                   {rec.thumb && (
                     <LazyImage
                       src={rec.thumb}
@@ -278,7 +285,7 @@ function CalendarPage() {
                   )}
                 </div>
               ) : (
-                <div className="mt-0.5 w-full" style={{ paddingTop: "100%" }} aria-hidden />
+                <div className="mt-0.5 w-full flex-1 min-h-0" aria-hidden />
               )}
 
               {rec && (hasMine || hasPartner) && (

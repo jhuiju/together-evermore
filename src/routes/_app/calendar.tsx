@@ -215,7 +215,7 @@ function CalendarPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-7 text-center text-[11px] shrink-0">
+      <div className="grid grid-cols-7 text-center text-[11px] shrink-0 px-2">
         {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
           <div
             key={d}

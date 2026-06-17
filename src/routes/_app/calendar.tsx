@@ -175,7 +175,7 @@ function CalendarPage() {
 
   return (
     <div
-      className="flex flex-col bg-[var(--app-bg)] text-[var(--app-text)] px-0.5"
+      className="flex flex-col bg-[var(--app-bg)] text-[var(--app-text)] px-[0.7px]"
     >
       <div className="space-y-1 pb-4 px-4 border-b border-[var(--app-divider)] shrink-0">
         <p className="text-xs text-[var(--app-muted)]">우리들의 캘린더</p>
@@ -215,7 +215,7 @@ function CalendarPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-7 text-center text-[11px] shrink-0 px-0.5">
+      <div className="grid grid-cols-7 text-center text-[11px] shrink-0 px-[0.7px]">
         {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
           <div
             key={d}
@@ -229,7 +229,7 @@ function CalendarPage() {
       </div>
 
       <div
-        className="grid grid-cols-7 px-0.5"
+        className="grid grid-cols-7 px-[0.7px]"
       >
         {Array.from({ length: firstDow }).map((_, i) => (
           <div key={`b-${i}`} className="flex flex-col">

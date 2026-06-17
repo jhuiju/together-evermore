@@ -229,7 +229,7 @@ function CalendarPage() {
       </div>
 
       <div
-        className="grid grid-cols-7 px-[0.7px]"
+        className="grid grid-cols-7 px-[0.7px] gap-y-1.5"
       >
         {Array.from({ length: firstDow }).map((_, i) => (
           <div key={`b-${i}`} className="flex flex-col">

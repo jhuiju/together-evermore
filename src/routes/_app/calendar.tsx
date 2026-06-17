@@ -215,7 +215,7 @@ function CalendarPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-7 text-center text-[11px] shrink-0 px-1">
+      <div className="grid grid-cols-7 text-center text-[11px] shrink-0 px-0.5">
         {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
           <div
             key={d}
@@ -229,7 +229,7 @@ function CalendarPage() {
       </div>
 
       <div
-        className="grid grid-cols-7 px-1"
+        className="grid grid-cols-7 px-0.5"
       >
         {Array.from({ length: firstDow }).map((_, i) => (
           <div key={`b-${i}`} className="flex flex-col">

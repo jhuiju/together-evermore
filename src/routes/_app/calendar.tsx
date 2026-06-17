@@ -175,7 +175,7 @@ function CalendarPage() {
 
   return (
     <div
-      className="flex flex-col bg-[var(--app-bg)] text-[var(--app-text)] px-2"
+      className="flex flex-col bg-[var(--app-bg)] text-[var(--app-text)] px-1"
     >
       <div className="space-y-1 pb-4 px-4 border-b border-[var(--app-divider)] shrink-0">
         <p className="text-xs text-[var(--app-muted)]">우리들의 캘린더</p>

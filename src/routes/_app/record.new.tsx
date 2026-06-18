@@ -774,6 +774,17 @@ function NewRecordPage() {
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
+                    <button
+                      type="button"
+                      onClick={toggleFavorite}
+                      disabled={!coupleId || favTogglingKey !== null}
+                      className="shrink-0 text-yellow-500 hover:text-yellow-600 disabled:opacity-50"
+                      aria-label={currentFav ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                    >
+                      <Star
+                        className={`w-4 h-4 ${currentFav ? "fill-yellow-400 text-yellow-500" : ""}`}
+                      />
+                    </button>
                   </div>
                 )}
                 {place.address && (

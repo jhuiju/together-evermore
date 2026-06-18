@@ -649,6 +649,35 @@ function NewRecordPage() {
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
               )}
             </div>
+            {favorites.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="text-[11px] text-muted-foreground">즐겨찾는 장소</div>
+                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                  {favorites.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => {
+                        setPlace({
+                          id: `fav-${f.id}`,
+                          name: f.location_name,
+                          address: "",
+                          lat: f.lat,
+                          lng: f.lng,
+                        });
+                        setQuery("");
+                        setResults([]);
+                        setSearched(false);
+                      }}
+                      className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-200 text-xs border border-purple-200/60 hover:bg-purple-100 dark:hover:bg-purple-950/50 transition-colors"
+                    >
+                      <MapPin className="w-3 h-3" />
+                      <span className="whitespace-nowrap">{f.location_name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {results.length > 0 && (
               <div className="rounded-lg border border-border divide-y max-h-60 overflow-auto">
                 {results.map((r) => (

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { notifyPartnerOfNewRecord } from "@/lib/push.functions";
 import { getSignedPhotoUrls } from "@/lib/photos";
@@ -98,7 +98,83 @@ function NewRecordPage() {
   const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
   const [loadingExisting, setLoadingExisting] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [coupleId, setCoupleId] = useState<string | null>(null);
+  const [favTogglingKey, setFavTogglingKey] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // Load couple id once
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: me } = await supabase
+        .from("users").select("couple_id").eq("id", user.id).maybeSingle();
+      if (me?.couple_id) setCoupleId(me.couple_id);
+    })();
+  }, []);
+
+  type FavoritePlace = {
+    id: string;
+    location_name: string;
+    lat: number | null;
+    lng: number | null;
+    created_at: string;
+  };
+
+  const { data: favorites = [] } = useQuery<FavoritePlace[]>({
+    queryKey: ["favorite_places", coupleId],
+    enabled: !!coupleId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("favorite_places")
+        .select("id, location_name, lat, lng, created_at")
+        .eq("couple_id", coupleId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as FavoritePlace[];
+    },
+  });
+
+  function favKey(name: string, lat: number | null, lng: number | null) {
+    return `${name}::${lat ?? ""}::${lng ?? ""}`;
+  }
+
+  const currentFav = place
+    ? favorites.find((f) =>
+        favKey(f.location_name, f.lat, f.lng) === favKey(place.name, place.lat, place.lng),
+      )
+    : null;
+
+  async function toggleFavorite() {
+    if (!place || !coupleId) return;
+    const key = favKey(place.name, place.lat, place.lng);
+    setFavTogglingKey(key);
+    try {
+      if (currentFav) {
+        const { error } = await (supabase as any)
+          .from("favorite_places").delete().eq("id", currentFav.id);
+        if (error) throw error;
+        toast("즐겨찾는 장소에서 삭제했어요");
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("로그인 필요");
+        const { error } = await (supabase as any).from("favorite_places").insert({
+          couple_id: coupleId,
+          location_name: place.name,
+          lat: place.lat,
+          lng: place.lng,
+          created_by: user.id,
+        });
+        if (error) throw error;
+        toast.success("즐겨찾는 장소로 등록했어요 ⭐");
+      }
+      qc.invalidateQueries({ queryKey: ["favorite_places", coupleId] });
+    } catch (e: any) {
+      toast.error(e.message ?? "처리에 실패했어요");
+    } finally {
+      setFavTogglingKey(null);
+    }
+  }
 
   const kakaoKey = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
   const mapRef = useRef<HTMLDivElement>(null);

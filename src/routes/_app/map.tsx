@@ -270,9 +270,21 @@ function MapPage() {
             </div>`,
           );
         } else {
-          const name = grp.location_name ?? "이 장소";
           const sorted = [...grp.pins].sort((a, b) => (a.date < b.date ? 1 : -1));
-          const items = sorted.map((p) => {
+          // Group pins by distinct location_name
+          const byName = new Map<string, Pin[]>();
+          sorted.forEach((p) => {
+            const key = p.location_name ?? "이름 없는 장소";
+            const arr = byName.get(key) ?? [];
+            arr.push(p);
+            byName.set(key, arr);
+          });
+          const distinctCount = byName.size;
+          const headerTitle = distinctCount > 1
+            ? `이 근처 · ${distinctCount}개의 장소`
+            : `${sorted[0].location_name ?? "이 장소"} · ${count}개의 기록`;
+
+          const renderRecord = (p: Pin) => {
             const c = getTagColor(p.tag);
             const tagLabel = p.tag ?? "태그 없음";
             const avg = p.avg != null ? `⭐ ${p.avg.toFixed(1)}` : "평점 없음";
@@ -290,11 +302,23 @@ function MapPage() {
                   <div style="font-size:12px;color:#2C2C2A">${avg}</div>
                 </div>
               </a>`;
-          }).join("");
+          };
+
+          let body: string;
+          if (distinctCount > 1) {
+            body = Array.from(byName.entries()).map(([name, ps]) => `
+              <div style="margin-bottom:8px">
+                <div style="font-size:12px;font-weight:600;color:#2C2C2A;padding:4px 2px;border-top:1px solid #e5e5e5;margin-top:4px">📍 ${name}</div>
+                ${ps.map(renderRecord).join("")}
+              </div>
+            `).join("");
+          } else {
+            body = sorted.map(renderRecord).join("");
+          }
           infoRef.current.setContent(
             `<div style="width:240px;font-family:inherit">
-              <div style="font-weight:600;margin-bottom:6px;font-size:13px">${name} <span style="color:#888;font-weight:400">· ${count}개의 기록</span></div>
-              <div style="max-height:280px;overflow-y:auto">${items}</div>
+              <div style="font-weight:600;margin-bottom:6px;font-size:13px">${headerTitle}</div>
+              <div style="max-height:280px;overflow-y:auto">${body}</div>
             </div>`,
           );
         }

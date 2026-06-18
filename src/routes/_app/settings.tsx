@@ -467,6 +467,40 @@ function SettingsPage() {
         )}
       </Card>
 
+      {/* Favorite places */}
+      {coupleId && (
+        <Card className="p-6 space-y-3">
+          <h3 className="font-medium flex items-center gap-2">
+            <Star className="w-4 h-4 text-yellow-500 fill-yellow-400" /> 즐겨찾는 장소 관리
+          </h3>
+          {favLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : favorites.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-3">
+              즐겨찾는 장소가 없어요
+            </p>
+          ) : (
+            <ul className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+              {favorites.map((f) => (
+                <li key={f.id} className="flex items-center justify-between gap-2 px-3 py-2.5">
+                  <span className="text-sm truncate">{f.location_name}</span>
+                  <button
+                    type="button"
+                    onClick={() => deleteFavorite(f)}
+                    className="shrink-0 text-muted-foreground hover:text-destructive p-1"
+                    aria-label="삭제"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+
       {/* Couple invite code */}
       {coupleId && inviteCode && (
         <Card className="p-6 space-y-4">

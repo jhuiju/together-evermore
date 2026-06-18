@@ -277,6 +277,70 @@ function SettingsPage() {
     navigate({ to: "/login" });
   }
 
+  type FavoritePlace = {
+    id: string;
+    location_name: string;
+    lat: number | null;
+    lng: number | null;
+    created_at: string;
+  };
+
+  const { data: favorites = [], isLoading: favLoading } = useQuery<FavoritePlace[]>({
+    queryKey: ["favorite_places", coupleId],
+    enabled: !!coupleId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("favorite_places")
+        .select("id, location_name, lat, lng, created_at")
+        .eq("couple_id", coupleId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as FavoritePlace[];
+    },
+  });
+
+  async function deleteFavorite(fav: FavoritePlace) {
+    // optimistic: remove from cache, restore on undo
+    const prev = (qc.getQueryData<FavoritePlace[]>(["favorite_places", coupleId])) ?? [];
+    qc.setQueryData<FavoritePlace[]>(
+      ["favorite_places", coupleId],
+      prev.filter((f) => f.id !== fav.id),
+    );
+    let undone = false;
+    toast("즐겨찾는 장소에서 삭제했어요", {
+      duration: 3000,
+      action: {
+        label: "취소",
+        onClick: () => {
+          undone = true;
+          qc.setQueryData<FavoritePlace[]>(["favorite_places", coupleId], prev);
+        },
+      },
+      onAutoClose: async () => {
+        if (undone) return;
+        const { error } = await (supabase as any)
+          .from("favorite_places").delete().eq("id", fav.id);
+        if (error) {
+          toast.error("삭제 실패: " + error.message);
+          qc.setQueryData<FavoritePlace[]>(["favorite_places", coupleId], prev);
+        } else {
+          qc.invalidateQueries({ queryKey: ["favorite_places", coupleId] });
+        }
+      },
+      onDismiss: async () => {
+        if (undone) return;
+        const { error } = await (supabase as any)
+          .from("favorite_places").delete().eq("id", fav.id);
+        if (error) {
+          toast.error("삭제 실패: " + error.message);
+          qc.setQueryData<FavoritePlace[]>(["favorite_places", coupleId], prev);
+        } else {
+          qc.invalidateQueries({ queryKey: ["favorite_places", coupleId] });
+        }
+      },
+    });
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">

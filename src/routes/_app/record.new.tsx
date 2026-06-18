@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { notifyPartnerOfNewRecord } from "@/lib/push.functions";
 import { getSignedPhotoUrls } from "@/lib/photos";
@@ -98,7 +98,83 @@ function NewRecordPage() {
   const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
   const [loadingExisting, setLoadingExisting] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [coupleId, setCoupleId] = useState<string | null>(null);
+  const [favTogglingKey, setFavTogglingKey] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // Load couple id once
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: me } = await supabase
+        .from("users").select("couple_id").eq("id", user.id).maybeSingle();
+      if (me?.couple_id) setCoupleId(me.couple_id);
+    })();
+  }, []);
+
+  type FavoritePlace = {
+    id: string;
+    location_name: string;
+    lat: number | null;
+    lng: number | null;
+    created_at: string;
+  };
+
+  const { data: favorites = [] } = useQuery<FavoritePlace[]>({
+    queryKey: ["favorite_places", coupleId],
+    enabled: !!coupleId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("favorite_places")
+        .select("id, location_name, lat, lng, created_at")
+        .eq("couple_id", coupleId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as FavoritePlace[];
+    },
+  });
+
+  function favKey(name: string, lat: number | null, lng: number | null) {
+    return `${name}::${lat ?? ""}::${lng ?? ""}`;
+  }
+
+  const currentFav = place
+    ? favorites.find((f) =>
+        favKey(f.location_name, f.lat, f.lng) === favKey(place.name, place.lat, place.lng),
+      )
+    : null;
+
+  async function toggleFavorite() {
+    if (!place || !coupleId) return;
+    const key = favKey(place.name, place.lat, place.lng);
+    setFavTogglingKey(key);
+    try {
+      if (currentFav) {
+        const { error } = await (supabase as any)
+          .from("favorite_places").delete().eq("id", currentFav.id);
+        if (error) throw error;
+        toast("즐겨찾는 장소에서 삭제했어요");
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("로그인 필요");
+        const { error } = await (supabase as any).from("favorite_places").insert({
+          couple_id: coupleId,
+          location_name: place.name,
+          lat: place.lat,
+          lng: place.lng,
+          created_by: user.id,
+        });
+        if (error) throw error;
+        toast.success("즐겨찾는 장소로 등록했어요 ⭐");
+      }
+      qc.invalidateQueries({ queryKey: ["favorite_places", coupleId] });
+    } catch (e: any) {
+      toast.error(e.message ?? "처리에 실패했어요");
+    } finally {
+      setFavTogglingKey(null);
+    }
+  }
 
   const kakaoKey = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
   const mapRef = useRef<HTMLDivElement>(null);
@@ -573,6 +649,35 @@ function NewRecordPage() {
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
               )}
             </div>
+            {favorites.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="text-[11px] text-muted-foreground">즐겨찾는 장소</div>
+                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                  {favorites.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => {
+                        setPlace({
+                          id: `fav-${f.id}`,
+                          name: f.location_name,
+                          address: "",
+                          lat: f.lat,
+                          lng: f.lng,
+                        });
+                        setQuery("");
+                        setResults([]);
+                        setSearched(false);
+                      }}
+                      className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-200 text-xs border border-purple-200/60 hover:bg-purple-100 dark:hover:bg-purple-950/50 transition-colors"
+                    >
+                      <MapPin className="w-3 h-3" />
+                      <span className="whitespace-nowrap">{f.location_name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {results.length > 0 && (
               <div className="rounded-lg border border-border divide-y max-h-60 overflow-auto">
                 {results.map((r) => (
@@ -668,6 +773,17 @@ function NewRecordPage() {
                       aria-label="장소 이름 수정"
                     >
                       <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={toggleFavorite}
+                      disabled={!coupleId || favTogglingKey !== null}
+                      className="shrink-0 text-yellow-500 hover:text-yellow-600 disabled:opacity-50"
+                      aria-label={currentFav ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                    >
+                      <Star
+                        className={`w-4 h-4 ${currentFav ? "fill-yellow-400 text-yellow-500" : ""}`}
+                      />
                     </button>
                   </div>
                 )}

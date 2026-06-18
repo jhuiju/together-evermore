@@ -44,6 +44,51 @@ export type Database = {
         }
         Relationships: []
       }
+      favorite_places: {
+        Row: {
+          couple_id: string
+          created_at: string
+          created_by: string
+          id: string
+          lat: number | null
+          lng: number | null
+          location_name: string
+        }
+        Insert: {
+          couple_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          location_name: string
+        }
+        Update: {
+          couple_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          location_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorite_places_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favorite_places_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memos: {
         Row: {
           content: string

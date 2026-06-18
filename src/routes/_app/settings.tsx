@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Bell, BellOff, Camera, Eye, EyeOff, Heart, Link2, Loader2, LogOut, Shield, User as UserIcon } from "lucide-react";
+import { Bell, BellOff, Camera, Eye, EyeOff, Heart, Link2, Loader2, LogOut, Shield, Star, Trash2, User as UserIcon } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { deletePushSubscription, getVapidPublicKey, savePushSubscription } from "@/lib/push.functions";
 import { ensurePushSubscribed } from "@/components/push-permission-prompt";
 import { Switch } from "@/components/ui/switch";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,

@@ -62,14 +62,8 @@ function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: 
 function groupPins(pins: Pin[]): PinGroup[] {
   const groups: PinGroup[] = [];
   for (const p of pins) {
-    // Try match by location_name first
-    let matched: PinGroup | undefined;
-    if (p.location_name) {
-      matched = groups.find((g) => g.location_name && g.location_name === p.location_name);
-    }
-    if (!matched) {
-      matched = groups.find((g) => distanceMeters(g, p) <= 50);
-    }
+    // Group strictly by proximity (~30m) to catch same-building, different-unit cases
+    const matched = groups.find((g) => distanceMeters(g, p) <= 30);
     if (matched) {
       matched.pins.push(p);
       // Update centroid

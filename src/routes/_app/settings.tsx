@@ -32,6 +32,7 @@ function SettingsPage() {
   const getKey = useServerFn(getVapidPublicKey);
   const saveSub = useServerFn(savePushSubscription);
   const deleteSub = useServerFn(deletePushSubscription);
+  const qc = useQueryClient();
 
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">(
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported",

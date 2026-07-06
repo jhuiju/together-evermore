@@ -289,15 +289,15 @@ function CalendarPage() {
                 <div className="mt-0.5 flex gap-0.5">
                   {bothRated ? (
                     <>
-                      <span className="flex-1 px-1 flex items-center justify-center rounded bg-[var(--app-pink-badge-bg)] text-[var(--app-pink-badge-text)] py-[1px] font-medium">
+                      <span className="flex-1 px-1 flex items-center justify-center rounded-[3px] bg-[var(--app-pink-badge-bg)] text-[var(--app-pink-badge-text)] py-[1px] font-medium">
                         <span className="text-[11px] leading-none">{rec.myScore}</span>
                       </span>
-                      <span className="flex-1 px-1 flex items-center justify-center rounded bg-[var(--app-purple-badge-bg)] text-[var(--app-purple-badge-text)] py-[1px] font-medium">
+                      <span className="flex-1 px-1 flex items-center justify-center rounded-[3px] bg-[var(--app-purple-badge-bg)] text-[var(--app-purple-badge-text)] py-[1px] font-medium">
                         <span className="text-[11px] leading-none">{rec.partnerScore}</span>
                       </span>
                     </>
                   ) : (
-                    <span className="flex-1 px-1 flex items-center justify-center rounded bg-[var(--app-pink-badge-bg)] text-[var(--app-pink-badge-text)] py-[1px] font-medium">
+                    <span className="flex-1 px-1 flex items-center justify-center rounded-[3px] bg-[var(--app-pink-badge-bg)] text-[var(--app-pink-badge-text)] py-[1px] font-medium">
                       <span className="text-[11px] leading-none">{hasMine ? rec.myScore : rec.partnerScore}</span>
                     </span>
                   )}

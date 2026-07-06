@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate, Link, useLocation } from "@tansta
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Heart, Calendar, Map, Settings, Loader2 } from "lucide-react";
+import { Heart, Calendar, Map, Settings, Loader2, Library } from "lucide-react";
 import { PushPermissionPrompt } from "@/components/push-permission-prompt";
 
 export const Route = createFileRoute("/_app")({
@@ -77,8 +77,9 @@ function AppLayout() {
           className="fixed bottom-0 inset-x-0 border-t border-[var(--app-divider)] bg-[var(--app-bg)]"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          <div className="max-w-2xl mx-auto grid grid-cols-3">
+          <div className="max-w-2xl mx-auto grid grid-cols-4">
             <NavItem to="/calendar" icon={Calendar} label="캘린더" />
+            <NavItem to="/archive" icon={Library} label="Archive" />
             <NavItem to="/map" icon={Map} label="지도" />
             <NavItem to="/settings" icon={Settings} label="설정" />
           </div>

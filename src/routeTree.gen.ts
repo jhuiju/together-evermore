@@ -17,6 +17,7 @@ import { Route as AppSearchRouteImport } from './routes/_app/search'
 import { Route as AppMapRouteImport } from './routes/_app/map'
 import { Route as AppConnectRouteImport } from './routes/_app/connect'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
+import { Route as AppArchiveRouteImport } from './routes/_app/archive'
 import { Route as ApiKakaoSearchRouteImport } from './routes/api/kakao.search'
 import { Route as AppRecordNewRouteImport } from './routes/_app/record.new'
 import { Route as AppDateDateIdRouteImport } from './routes/_app/date.$dateId'
@@ -60,6 +61,11 @@ const AppCalendarRoute = AppCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AppRoute,
 } as any)
+const AppArchiveRoute = AppArchiveRouteImport.update({
+  id: '/archive',
+  path: '/archive',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiKakaoSearchRoute = ApiKakaoSearchRouteImport.update({
   id: '/api/kakao/search',
   path: '/api/kakao/search',
@@ -79,6 +85,7 @@ const AppDateDateIdRoute = AppDateDateIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/archive': typeof AppArchiveRoute
   '/calendar': typeof AppCalendarRoute
   '/connect': typeof AppConnectRoute
   '/map': typeof AppMapRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/archive': typeof AppArchiveRoute
   '/calendar': typeof AppCalendarRoute
   '/connect': typeof AppConnectRoute
   '/map': typeof AppMapRoute
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/archive': typeof AppArchiveRoute
   '/_app/calendar': typeof AppCalendarRoute
   '/_app/connect': typeof AppConnectRoute
   '/_app/map': typeof AppMapRoute
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/archive'
     | '/calendar'
     | '/connect'
     | '/map'
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/archive'
     | '/calendar'
     | '/connect'
     | '/map'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/_app/archive'
     | '/_app/calendar'
     | '/_app/connect'
     | '/_app/map'
@@ -219,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCalendarRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/archive': {
+      id: '/_app/archive'
+      path: '/archive'
+      fullPath: '/archive'
+      preLoaderRoute: typeof AppArchiveRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/kakao/search': {
       id: '/api/kakao/search'
       path: '/api/kakao/search'
@@ -244,6 +263,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppArchiveRoute: typeof AppArchiveRoute
   AppCalendarRoute: typeof AppCalendarRoute
   AppConnectRoute: typeof AppConnectRoute
   AppMapRoute: typeof AppMapRoute
@@ -254,6 +274,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppArchiveRoute: AppArchiveRoute,
   AppCalendarRoute: AppCalendarRoute,
   AppConnectRoute: AppConnectRoute,
   AppMapRoute: AppMapRoute,
@@ -274,3 +295,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

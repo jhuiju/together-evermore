@@ -262,7 +262,7 @@ function CalendarPage() {
               search={!rec ? { date: dateStr } : (undefined as never)}
               className={`relative flex flex-col p-0.5 ${
                 rec
-                  ? "bg-[var(--app-surface)] rounded-lg border border-[var(--app-cell-border)] overflow-hidden"
+                  ? "bg-[var(--app-surface)] rounded-[8px] border border-[var(--app-cell-border)] overflow-hidden"
                   : ""
               }`}
             >

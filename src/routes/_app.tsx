@@ -78,10 +78,10 @@ function AppLayout() {
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <div className="max-w-2xl mx-auto grid grid-cols-4">
-            <NavItem to="/calendar" icon={Calendar} label="Calendar" />
+            <NavItem to="/calendar" icon={Calendar} label="캘린더" />
             <NavItem to="/archive" icon={Library} label="Archive" />
-            <NavItem to="/map" icon={Map} label="Map" />
-            <NavItem to="/settings" icon={Settings} label="Settings" />
+            <NavItem to="/map" icon={Map} label="지도" />
+            <NavItem to="/settings" icon={Settings} label="설정" />
           </div>
         </nav>
       )}

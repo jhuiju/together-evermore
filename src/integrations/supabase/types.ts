@@ -14,6 +14,114 @@ export type Database = {
   }
   public: {
     Tables: {
+      archive_items: {
+        Row: {
+          added_by: string
+          category: string
+          couple_id: string
+          created_at: string
+          genre: string | null
+          id: string
+          poster_url: string | null
+          priority: string | null
+          release_year: string | null
+          title: string
+          tmdb_id: string | null
+          type: string
+          watch_type: string | null
+          watched_date: string | null
+        }
+        Insert: {
+          added_by: string
+          category?: string
+          couple_id: string
+          created_at?: string
+          genre?: string | null
+          id?: string
+          poster_url?: string | null
+          priority?: string | null
+          release_year?: string | null
+          title: string
+          tmdb_id?: string | null
+          type: string
+          watch_type?: string | null
+          watched_date?: string | null
+        }
+        Update: {
+          added_by?: string
+          category?: string
+          couple_id?: string
+          created_at?: string
+          genre?: string | null
+          id?: string
+          poster_url?: string | null
+          priority?: string | null
+          release_year?: string | null
+          title?: string
+          tmdb_id?: string | null
+          type?: string
+          watch_type?: string | null
+          watched_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archive_items_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_items_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      archive_ratings: {
+        Row: {
+          archive_item_id: string
+          comment: string | null
+          created_at: string
+          id: string
+          score: number
+          user_id: string
+        }
+        Insert: {
+          archive_item_id: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          score: number
+          user_id: string
+        }
+        Update: {
+          archive_item_id?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archive_ratings_archive_item_id_fkey"
+            columns: ["archive_item_id"]
+            isOneToOne: false
+            referencedRelation: "archive_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       couples: {
         Row: {
           anniversary: string | null

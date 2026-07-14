@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Library, Film, Heart, Plus } from "lucide-react";
@@ -48,6 +48,7 @@ const FAB_LABELS: Record<Segment, string> = {
 function ArchivePage() {
   const [segment, setSegment] = useState<Segment>("record");
   const [category, setCategory] = useState<Category>("all");
+  const navigate = useNavigate();
 
   return (
     <div className="relative min-h-[calc(100vh-120px)] bg-[var(--app-bg)] text-[var(--app-text)]">
@@ -100,6 +101,11 @@ function ArchivePage() {
       {/* Floating action button */}
       <button
         type="button"
+        onClick={() => {
+          if (segment === "record") {
+            navigate({ to: "/archive/record/new" });
+          }
+        }}
         className="fixed bottom-[calc(var(--app-bottom-nav-h)+env(safe-area-inset-bottom)+1rem)] right-4 z-20 inline-flex items-center gap-2 pl-4 pr-5 h-12 rounded-full bg-[var(--app-pink)] text-white shadow-lg hover:bg-[var(--app-pink-hover)] transition-colors"
         aria-label={FAB_LABELS[segment]}
       >

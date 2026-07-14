@@ -113,14 +113,14 @@ function NewArchiveRecordPage() {
         .single();
       if (itemErr || !item) throw itemErr ?? new Error("저장에 실패했어요");
 
-      if (stars > 0 || comment.trim().length > 0) {
+      if (stars > 0) {
         const { error: rateErr } = await supabase
           .from("archive_ratings")
           .upsert(
             {
               archive_item_id: item.id,
               user_id: user.id,
-              score: stars > 0 ? stars * 2 : null,
+              score: stars * 2,
               comment: comment.trim() ? comment.trim() : null,
             },
             { onConflict: "archive_item_id,user_id" },

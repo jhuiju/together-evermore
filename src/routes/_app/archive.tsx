@@ -104,6 +104,8 @@ function ArchivePage() {
         onClick={() => {
           if (segment === "record") {
             navigate({ to: "/archive/record/new" });
+          } else {
+            navigate({ to: "/archive/wish/new" });
           }
         }}
         className="fixed bottom-[calc(var(--app-bottom-nav-h)+env(safe-area-inset-bottom)+1rem)] right-4 z-20 inline-flex items-center gap-2 pl-4 pr-5 h-12 rounded-full bg-[var(--app-pink)] text-white shadow-lg hover:bg-[var(--app-pink-hover)] transition-colors"

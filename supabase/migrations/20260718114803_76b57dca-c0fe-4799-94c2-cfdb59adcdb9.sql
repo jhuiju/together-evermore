@@ -1,0 +1,1 @@
+ALTER TABLE public.archive_items ADD COLUMN IF NOT EXISTS reason text;

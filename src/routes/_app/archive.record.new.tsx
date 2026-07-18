@@ -13,6 +13,9 @@ import { toast } from "sonner";
 import { ArrowLeft, Calendar as CalIcon, Film, Star, Loader2, Link2 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/archive/record/new")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    fromWish: typeof s.fromWish === "string" ? s.fromWish : undefined,
+  }),
   component: NewArchiveRecordPage,
 });
 
@@ -38,6 +41,7 @@ type LinkedRecord = {
 function NewArchiveRecordPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { fromWish } = Route.useSearch();
 
   const [movie, setMovie] = useState<TmdbMovie | null>(null);
   const [watchedDate, setWatchedDate] = useState(todayStr());
@@ -49,6 +53,29 @@ function NewArchiveRecordPage() {
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Prefill from wish item
+  useEffect(() => {
+    if (!fromWish) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("archive_items")
+        .select("*")
+        .eq("id", fromWish)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setMovie({
+        id: data.tmdb_id ? Number(data.tmdb_id) : 0,
+        title: data.title,
+        original_title: data.title,
+        poster_path: data.poster_url,
+        release_date: data.release_year ? `${data.release_year}-01-01` : "",
+        genre_ids: [],
+      } as TmdbMovie);
+    })();
+    return () => { cancelled = true; };
+  }, [fromWish]);
 
   // Fetch calendar records for the selected date when link toggle is on.
   useEffect(() => {
@@ -128,7 +155,12 @@ function NewArchiveRecordPage() {
         if (rateErr) throw rateErr;
       }
 
-      toast.success("기록이 추가됐어요 🎬");
+      if (fromWish) {
+        await supabase.from("archive_items").delete().eq("id", fromWish);
+        toast.success("기록으로 이동됐어요 🎬");
+      } else {
+        toast.success("기록이 추가됐어요 🎬");
+      }
       qc.invalidateQueries({ queryKey: ["archive_items"] });
       navigate({ to: "/archive" });
     } catch (e: any) {

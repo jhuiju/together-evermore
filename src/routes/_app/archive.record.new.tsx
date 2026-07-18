@@ -155,10 +155,11 @@ function NewArchiveRecordPage() {
         if (rateErr) throw rateErr;
       }
 
-      toast.success("기록이 추가됐어요 🎬");
       if (fromWish) {
         await supabase.from("archive_items").delete().eq("id", fromWish);
         toast.success("기록으로 이동됐어요 🎬");
+      } else {
+        toast.success("기록이 추가됐어요 🎬");
       }
       qc.invalidateQueries({ queryKey: ["archive_items"] });
       navigate({ to: "/archive" });

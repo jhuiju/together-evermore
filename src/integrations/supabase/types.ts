@@ -24,6 +24,7 @@ export type Database = {
           id: string
           poster_url: string | null
           priority: string | null
+          reason: string | null
           release_year: string | null
           title: string
           tmdb_id: string | null
@@ -40,6 +41,7 @@ export type Database = {
           id?: string
           poster_url?: string | null
           priority?: string | null
+          reason?: string | null
           release_year?: string | null
           title: string
           tmdb_id?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           id?: string
           poster_url?: string | null
           priority?: string | null
+          reason?: string | null
           release_year?: string | null
           title?: string
           tmdb_id?: string | null

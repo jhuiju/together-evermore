@@ -18,6 +18,7 @@ import { Route as AppMapRouteImport } from './routes/_app/map'
 import { Route as AppConnectRouteImport } from './routes/_app/connect'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
 import { Route as AppArchiveRouteImport } from './routes/_app/archive'
+import { Route as AppArchiveIndexRouteImport } from './routes/_app/archive.index'
 import { Route as ApiKakaoSearchRouteImport } from './routes/api/kakao.search'
 import { Route as AppRecordNewRouteImport } from './routes/_app/record.new'
 import { Route as AppDateDateIdRouteImport } from './routes/_app/date.$dateId'
@@ -69,6 +70,11 @@ const AppArchiveRoute = AppArchiveRouteImport.update({
   path: '/archive',
   getParentRoute: () => AppRoute,
 } as any)
+const AppArchiveIndexRoute = AppArchiveIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppArchiveRoute,
+} as any)
 const ApiKakaoSearchRoute = ApiKakaoSearchRouteImport.update({
   id: '/api/kakao/search',
   path: '/api/kakao/search',
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/date/$dateId': typeof AppDateDateIdRoute
   '/record/new': typeof AppRecordNewRoute
   '/api/kakao/search': typeof ApiKakaoSearchRoute
+  '/archive/': typeof AppArchiveIndexRoute
   '/archive/item/$itemId': typeof AppArchiveItemItemIdRoute
   '/archive/record/new': typeof AppArchiveRecordNewRoute
   '/archive/wish/new': typeof AppArchiveWishNewRoute
@@ -119,7 +126,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/archive': typeof AppArchiveRouteWithChildren
   '/calendar': typeof AppCalendarRoute
   '/connect': typeof AppConnectRoute
   '/map': typeof AppMapRoute
@@ -128,6 +134,7 @@ export interface FileRoutesByTo {
   '/date/$dateId': typeof AppDateDateIdRoute
   '/record/new': typeof AppRecordNewRoute
   '/api/kakao/search': typeof ApiKakaoSearchRoute
+  '/archive': typeof AppArchiveIndexRoute
   '/archive/item/$itemId': typeof AppArchiveItemItemIdRoute
   '/archive/record/new': typeof AppArchiveRecordNewRoute
   '/archive/wish/new': typeof AppArchiveWishNewRoute
@@ -146,6 +153,7 @@ export interface FileRoutesById {
   '/_app/date/$dateId': typeof AppDateDateIdRoute
   '/_app/record/new': typeof AppRecordNewRoute
   '/api/kakao/search': typeof ApiKakaoSearchRoute
+  '/_app/archive/': typeof AppArchiveIndexRoute
   '/_app/archive/item/$itemId': typeof AppArchiveItemItemIdRoute
   '/_app/archive/record/new': typeof AppArchiveRecordNewRoute
   '/_app/archive/wish/new': typeof AppArchiveWishNewRoute
@@ -164,6 +172,7 @@ export interface FileRouteTypes {
     | '/date/$dateId'
     | '/record/new'
     | '/api/kakao/search'
+    | '/archive/'
     | '/archive/item/$itemId'
     | '/archive/record/new'
     | '/archive/wish/new'
@@ -171,7 +180,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
-    | '/archive'
     | '/calendar'
     | '/connect'
     | '/map'
@@ -180,6 +188,7 @@ export interface FileRouteTypes {
     | '/date/$dateId'
     | '/record/new'
     | '/api/kakao/search'
+    | '/archive'
     | '/archive/item/$itemId'
     | '/archive/record/new'
     | '/archive/wish/new'
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/_app/date/$dateId'
     | '/_app/record/new'
     | '/api/kakao/search'
+    | '/_app/archive/'
     | '/_app/archive/item/$itemId'
     | '/_app/archive/record/new'
     | '/_app/archive/wish/new'
@@ -274,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppArchiveRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/archive/': {
+      id: '/_app/archive/'
+      path: '/'
+      fullPath: '/archive/'
+      preLoaderRoute: typeof AppArchiveIndexRouteImport
+      parentRoute: typeof AppArchiveRoute
+    }
     '/api/kakao/search': {
       id: '/api/kakao/search'
       path: '/api/kakao/search'
@@ -320,12 +337,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppArchiveRouteChildren {
+  AppArchiveIndexRoute: typeof AppArchiveIndexRoute
   AppArchiveItemItemIdRoute: typeof AppArchiveItemItemIdRoute
   AppArchiveRecordNewRoute: typeof AppArchiveRecordNewRoute
   AppArchiveWishNewRoute: typeof AppArchiveWishNewRoute
 }
 
 const AppArchiveRouteChildren: AppArchiveRouteChildren = {
+  AppArchiveIndexRoute: AppArchiveIndexRoute,
   AppArchiveItemItemIdRoute: AppArchiveItemItemIdRoute,
   AppArchiveRecordNewRoute: AppArchiveRecordNewRoute,
   AppArchiveWishNewRoute: AppArchiveWishNewRoute,

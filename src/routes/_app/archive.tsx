@@ -53,7 +53,7 @@ const FAB_LABELS: Record<Segment, string> = {
   wish: "위시 추가",
 };
 
-function ArchivePage() {
+export function ArchivePage() {
   const [segment, setSegment] = useState<Segment>("record");
   const [category, setCategory] = useState<Category>("all");
   const navigate = useNavigate();

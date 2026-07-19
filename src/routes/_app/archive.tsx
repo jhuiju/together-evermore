@@ -8,8 +8,12 @@ import { Library, Film, Heart, Plus, Star, Film as FilmIcon } from "lucide-react
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/archive")({
-  component: ArchivePage,
+  component: ArchiveLayout,
 });
+
+function ArchiveLayout() {
+  return <Outlet />;
+}
 
 const SEGMENTS = [
   { value: "record", label: "기록" },

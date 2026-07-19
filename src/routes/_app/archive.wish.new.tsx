@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_app/archive/wish/new")({
 
 const PRIORITIES = [
   { value: "must", label: "❤️ 꼭 보고 싶어요" },
-  { value: "someday", label: "👍 기회되면 봐요" },
+  { value: "maybe", label: "👍 기회되면 봐요" },
 ] as const;
 type Priority = (typeof PRIORITIES)[number]["value"];
 

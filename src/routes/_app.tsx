@@ -79,7 +79,7 @@ function AppLayout() {
         >
           <div className="max-w-2xl mx-auto grid grid-cols-4">
             <NavItem to="/calendar" icon={Calendar} label="캘린더" />
-            <NavItem to="/archive" icon={Library} label="Archive" />
+            <NavItem to="/archive" icon={Library} label="아카이브" />
             <NavItem to="/map" icon={Map} label="지도" />
             <NavItem to="/settings" icon={Settings} label="설정" />
           </div>

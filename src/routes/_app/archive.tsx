@@ -210,7 +210,7 @@ function Poster({ path, title, size = "w154", className }: { path: string | null
 }
 
 const WATCH_TYPE_LABEL: Record<string, string> = { theater: "영화관", ott: "OTT", other: "기타" };
-const PRIORITY_LABEL: Record<string, string> = { must: "❤️ 꼭 보고 싶어요", someday: "👍 기회되면 봐요" };
+const PRIORITY_LABEL: Record<string, string> = { must: "❤️ 꼭 보고 싶어요", maybe: "👍 기회되면 봐요" };
 
 function formatDate(d?: string | null) {
   if (!d) return "";

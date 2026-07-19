@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Outlet } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,8 +8,12 @@ import { Library, Film, Heart, Plus, Star, Film as FilmIcon } from "lucide-react
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_app/archive")({
-  component: ArchivePage,
+  component: ArchiveLayout,
 });
+
+function ArchiveLayout() {
+  return <Outlet />;
+}
 
 const SEGMENTS = [
   { value: "record", label: "기록" },
@@ -49,7 +53,7 @@ const FAB_LABELS: Record<Segment, string> = {
   wish: "위시 추가",
 };
 
-function ArchivePage() {
+export function ArchivePage() {
   const [segment, setSegment] = useState<Segment>("record");
   const [category, setCategory] = useState<Category>("all");
   const navigate = useNavigate();

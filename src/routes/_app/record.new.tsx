@@ -241,14 +241,15 @@ function NewRecordPage() {
 
   function addFiles(files: FileList | File[]) {
     const arr = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (arr.length === 0) return;
     setPhotos((prev) => {
-      const room = 10 - prev.length;
-      if (room <= 0) {
-        toast.error("사진은 최대 10장까지");
-        return prev;
+      const room = Math.max(0, 10 - prev.length);
+      if (room <= 0 || arr.length > room) {
+        toast.error("최대 10장까지 추가할 수 있어요");
       }
-      const next = arr.slice(0, room).map((file) => ({
-        uid: `new-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      if (room <= 0) return prev;
+      const next = arr.slice(0, room).map((file, i) => ({
+        uid: `new-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 9)}`,
         file,
         preview: URL.createObjectURL(file),
       }));

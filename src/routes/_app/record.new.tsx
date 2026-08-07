@@ -566,7 +566,11 @@ function NewRecordPage() {
         <div className="flex items-center justify-between">
           <Label className="flex items-center gap-1.5 text-sm">
             <ImagePlus className="w-4 h-4 text-pink-500" />사진{" "}
-            <span className="text-xs text-muted-foreground">{photos.length} / 10</span>
+            <span
+              className={`text-xs ${photos.length >= 10 ? "text-pink-500 font-medium" : "text-muted-foreground"}`}
+            >
+              {photos.length} / 10{photos.length >= 10 ? " (최대)" : ""}
+            </span>
           </Label>
           {photos.length > 0 && (
             <button
@@ -599,6 +603,10 @@ function NewRecordPage() {
           onDrop={(e) => {
             e.preventDefault();
             setDragOver(false);
+            if (photos.length >= 10) {
+              toast.error("최대 10장까지 추가할 수 있어요");
+              return;
+            }
             addFiles(e.dataTransfer.files);
           }}
           className={`grid grid-cols-3 gap-2 rounded-xl transition-colors ${
@@ -621,17 +629,22 @@ function NewRecordPage() {
               ))}
             </SortableContext>
           </DndContext>
-          {photos.length < 10 && (
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              className="relative aspect-square rounded-lg border-2 border-dashed border-pink-300/70 flex flex-col items-center justify-center text-pink-400 hover:border-pink-400 hover:bg-pink-50/60 dark:hover:bg-pink-950/30 transition-colors"
-              aria-label="사진 추가"
-            >
-              <Plus className="w-6 h-6" />
-              <span className="text-[10px] mt-1">사진 추가</span>
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={photos.length >= 10}
+            onClick={() => {
+              if (photos.length >= 10) {
+                toast.error("최대 10장까지 추가할 수 있어요");
+                return;
+              }
+              fileInput.current?.click();
+            }}
+            className="relative aspect-square rounded-lg border-2 border-dashed border-pink-300/70 flex flex-col items-center justify-center text-pink-400 hover:border-pink-400 hover:bg-pink-50/60 dark:hover:bg-pink-950/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            aria-label="사진 추가"
+          >
+            <Plus className="w-6 h-6" />
+            <span className="text-[10px] mt-1">사진 추가</span>
+          </button>
         </div>
       </div>
 

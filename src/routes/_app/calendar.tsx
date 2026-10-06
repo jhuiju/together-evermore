@@ -191,7 +191,7 @@ function CalendarPage() {
                 <Search className="w-5 h-5" />
               </Button>
             </Link>
-            <Link to="/record/new">
+            <Link to="/record/new" search={{ date: "" }}>
               <Button size="icon" className="rounded-full bg-[var(--app-pink)] hover:bg-[var(--app-pink-hover)] text-white shadow-sm">
                 <Plus className="w-5 h-5" />
               </Button>

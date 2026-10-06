@@ -151,7 +151,7 @@ export function ArchivePage() {
         type="button"
         onClick={() => {
           if (segment === "record") {
-            navigate({ to: "/archive/record/new" });
+            navigate({ to: "/archive/record/new", search: { fromWish: undefined } });
           } else {
             navigate({ to: "/archive/wish/new" });
           }

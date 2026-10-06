@@ -9,55 +9,40 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppSettingsRouteImport } from './routes/_app/settings'
-import { Route as AppSearchRouteImport } from './routes/_app/search'
-import { Route as AppMapRouteImport } from './routes/_app/map'
-import { Route as AppConnectRouteImport } from './routes/_app/connect'
-import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppArchiveRouteImport } from './routes/_app/archive'
+import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
+import { Route as AppConnectRouteImport } from './routes/_app/connect'
+import { Route as AppMapRouteImport } from './routes/_app/map'
+import { Route as AppSearchRouteImport } from './routes/_app/search'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppArchiveIndexRouteImport } from './routes/_app/archive.index'
-import { Route as ApiKakaoSearchRouteImport } from './routes/api/kakao.search'
-import { Route as AppRecordNewRouteImport } from './routes/_app/record.new'
 import { Route as AppDateDateIdRouteImport } from './routes/_app/date.$dateId'
-import { Route as AppArchiveWishNewRouteImport } from './routes/_app/archive.wish.new'
-import { Route as AppArchiveRecordNewRouteImport } from './routes/_app/archive.record.new'
+import { Route as AppRecordNewRouteImport } from './routes/_app/record.new'
+import { Route as ApiKakaoSearchRouteImport } from './routes/api/kakao.search'
 import { Route as AppArchiveItemItemIdRouteImport } from './routes/_app/archive.item.$itemId'
+import { Route as AppArchiveRecordNewRouteImport } from './routes/_app/archive.record.new'
+import { Route as AppArchiveWishNewRouteImport } from './routes/_app/archive.wish.new'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSearchRoute = AppSearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMapRoute = AppMapRouteImport.update({
-  id: '/map',
-  path: '/map',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppConnectRoute = AppConnectRouteImport.update({
-  id: '/connect',
-  path: '/connect',
+const AppArchiveRoute = AppArchiveRouteImport.update({
+  id: '/archive',
+  path: '/archive',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCalendarRoute = AppCalendarRouteImport.update({
@@ -65,9 +50,24 @@ const AppCalendarRoute = AppCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AppRoute,
 } as any)
-const AppArchiveRoute = AppArchiveRouteImport.update({
-  id: '/archive',
-  path: '/archive',
+const AppConnectRoute = AppConnectRouteImport.update({
+  id: '/connect',
+  path: '/connect',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMapRoute = AppMapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSearchRoute = AppSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
 const AppArchiveIndexRoute = AppArchiveIndexRouteImport.update({
@@ -75,24 +75,24 @@ const AppArchiveIndexRoute = AppArchiveIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppArchiveRoute,
 } as any)
-const ApiKakaoSearchRoute = ApiKakaoSearchRouteImport.update({
-  id: '/api/kakao/search',
-  path: '/api/kakao/search',
-  getParentRoute: () => rootRouteImport,
+const AppDateDateIdRoute = AppDateDateIdRouteImport.update({
+  id: '/date/$dateId',
+  path: '/date/$dateId',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppRecordNewRoute = AppRecordNewRouteImport.update({
   id: '/record/new',
   path: '/record/new',
   getParentRoute: () => AppRoute,
 } as any)
-const AppDateDateIdRoute = AppDateDateIdRouteImport.update({
-  id: '/date/$dateId',
-  path: '/date/$dateId',
-  getParentRoute: () => AppRoute,
+const ApiKakaoSearchRoute = ApiKakaoSearchRouteImport.update({
+  id: '/api/kakao/search',
+  path: '/api/kakao/search',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AppArchiveWishNewRoute = AppArchiveWishNewRouteImport.update({
-  id: '/wish/new',
-  path: '/wish/new',
+const AppArchiveItemItemIdRoute = AppArchiveItemItemIdRouteImport.update({
+  id: '/item/$itemId',
+  path: '/item/$itemId',
   getParentRoute: () => AppArchiveRoute,
 } as any)
 const AppArchiveRecordNewRoute = AppArchiveRecordNewRouteImport.update({
@@ -100,9 +100,9 @@ const AppArchiveRecordNewRoute = AppArchiveRecordNewRouteImport.update({
   path: '/record/new',
   getParentRoute: () => AppArchiveRoute,
 } as any)
-const AppArchiveItemItemIdRoute = AppArchiveItemItemIdRouteImport.update({
-  id: '/item/$itemId',
-  path: '/item/$itemId',
+const AppArchiveWishNewRoute = AppArchiveWishNewRouteImport.update({
+  id: '/wish/new',
+  path: '/wish/new',
   getParentRoute: () => AppArchiveRoute,
 } as any)
 
@@ -221,11 +221,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -235,39 +235,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/search': {
-      id: '/_app/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof AppSearchRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/map': {
-      id: '/_app/map'
-      path: '/map'
-      fullPath: '/map'
-      preLoaderRoute: typeof AppMapRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/connect': {
-      id: '/_app/connect'
-      path: '/connect'
-      fullPath: '/connect'
-      preLoaderRoute: typeof AppConnectRouteImport
+    '/_app/archive': {
+      id: '/_app/archive'
+      path: '/archive'
+      fullPath: '/archive'
+      preLoaderRoute: typeof AppArchiveRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/calendar': {
@@ -277,11 +256,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCalendarRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/archive': {
-      id: '/_app/archive'
-      path: '/archive'
-      fullPath: '/archive'
-      preLoaderRoute: typeof AppArchiveRouteImport
+    '/_app/connect': {
+      id: '/_app/connect'
+      path: '/connect'
+      fullPath: '/connect'
+      preLoaderRoute: typeof AppConnectRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/map': {
+      id: '/_app/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof AppMapRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/search': {
+      id: '/_app/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof AppSearchRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/archive/': {
@@ -291,12 +291,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppArchiveIndexRouteImport
       parentRoute: typeof AppArchiveRoute
     }
-    '/api/kakao/search': {
-      id: '/api/kakao/search'
-      path: '/api/kakao/search'
-      fullPath: '/api/kakao/search'
-      preLoaderRoute: typeof ApiKakaoSearchRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_app/date/$dateId': {
+      id: '/_app/date/$dateId'
+      path: '/date/$dateId'
+      fullPath: '/date/$dateId'
+      preLoaderRoute: typeof AppDateDateIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/record/new': {
       id: '/_app/record/new'
@@ -305,18 +305,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRecordNewRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/date/$dateId': {
-      id: '/_app/date/$dateId'
-      path: '/date/$dateId'
-      fullPath: '/date/$dateId'
-      preLoaderRoute: typeof AppDateDateIdRouteImport
-      parentRoute: typeof AppRoute
+    '/api/kakao/search': {
+      id: '/api/kakao/search'
+      path: '/api/kakao/search'
+      fullPath: '/api/kakao/search'
+      preLoaderRoute: typeof ApiKakaoSearchRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_app/archive/wish/new': {
-      id: '/_app/archive/wish/new'
-      path: '/wish/new'
-      fullPath: '/archive/wish/new'
-      preLoaderRoute: typeof AppArchiveWishNewRouteImport
+    '/_app/archive/item/$itemId': {
+      id: '/_app/archive/item/$itemId'
+      path: '/item/$itemId'
+      fullPath: '/archive/item/$itemId'
+      preLoaderRoute: typeof AppArchiveItemItemIdRouteImport
       parentRoute: typeof AppArchiveRoute
     }
     '/_app/archive/record/new': {
@@ -326,11 +326,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppArchiveRecordNewRouteImport
       parentRoute: typeof AppArchiveRoute
     }
-    '/_app/archive/item/$itemId': {
-      id: '/_app/archive/item/$itemId'
-      path: '/item/$itemId'
-      fullPath: '/archive/item/$itemId'
-      preLoaderRoute: typeof AppArchiveItemItemIdRouteImport
+    '/_app/archive/wish/new': {
+      id: '/_app/archive/wish/new'
+      path: '/wish/new'
+      fullPath: '/archive/wish/new'
+      preLoaderRoute: typeof AppArchiveWishNewRouteImport
       parentRoute: typeof AppArchiveRoute
     }
   }

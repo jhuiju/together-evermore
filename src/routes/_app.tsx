@@ -47,14 +47,14 @@ function AppLayout() {
 
   return (
     <div
-      className="bg-[var(--app-bg)] min-h-screen-dvh"
+      className="app-page-wrapper bg-[var(--app-bg)] h-screen-dvh"
       style={{
         ["--app-header-h" as any]: "49px",
         ["--app-bottom-nav-h" as any]: "64px",
       }}
     >
       <header
-        className="border-b border-[var(--app-divider)] bg-[var(--app-bg)] sticky top-0 z-10"
+        className="shrink-0 border-b border-[var(--app-divider)] bg-[var(--app-bg)] sticky top-0 z-10"
         style={{ height: "var(--app-header-h)" }}
       >
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
@@ -63,7 +63,7 @@ function AppLayout() {
         </div>
       </header>
       <main
-        className="max-w-2xl mx-auto px-4 py-6"
+        className="app-page-content max-w-2xl mx-auto px-4 py-6"
         style={{
           paddingBottom: hasCouple
             ? "calc(var(--app-bottom-nav-h) + env(safe-area-inset-bottom) + 1rem)"

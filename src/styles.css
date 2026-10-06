@@ -220,6 +220,44 @@
   }
 }
 
+/* Keep the document stationary; pages own their scrollable content. */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+}
+
+#root {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+}
+
+.root-page-content {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+.app-page-wrapper {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+}
+
+.app-page-content {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 /* Use dynamic viewport height where supported (Android Chrome address bar fix).
    Falls back to 100vh for older browsers. */
 .min-h-screen-dvh { min-height: 100vh; }
